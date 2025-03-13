@@ -1,6 +1,6 @@
-# API Hogari
+# API Convivir
 
-API para Hogari.
+API para Convivir.
 
 ## Requisitos
 
@@ -11,13 +11,18 @@ API para Hogari.
 ### Crear .env
     Crear un archivo ".env" con los siguientes campos:
     ```sh
-    DB_NAME = 'tetris'  "dejar por defecto este nombre"
+    DB_NAME = 'convivir'  "dejar por defecto este nombre"
     DB_HOST = 'host de la db'
     DB_USER = 'usuario de la base de datos'
     DB_PASSWORD = 'password de la base de datos'
     DB_PORT = 'puerto'
 
     SECRET_KEY = 'Tu Secret Key'
+
+    SMTP_SERVER = 'direccion smtp'
+    EMAIL_PORT = puerto 
+    EMAIL = 'your_mail'
+    EMAIL_PASSWORD = 'password'
     ```
 
 ## Instalación
@@ -27,8 +32,8 @@ API para Hogari.
 1. Clona el repositorio:
 
     ```sh
-    git clone https://github.com/DanielChachagua/Hogari-Back.git
-    cd Hogari
+    git clone https://github.com/SaltaGet/Back-Georgina.git
+    cd Back-Georgina
     ```
 
 2. Crea y activa un entorno virtual:
@@ -49,8 +54,8 @@ API para Hogari.
 1. Clona el repositorio:
 
     ```sh
-    git clone https://github.com/DanielChachagua/Hogari-Back.git
-    cd Hogari
+    git clone https://github.com/SaltaGet/Back-Georgina.git
+    cd Back-Georgina
     ```
 
 2. Crea y activa un entorno virtual:

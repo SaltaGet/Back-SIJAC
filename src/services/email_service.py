@@ -19,7 +19,6 @@ class EmailService:
     async def send_email(
         self,
         email_contact: EmailContact
-        # attachments: Optional[list[str]] = None
     ) -> None:
         try:
             message = MIMEMultipart()
@@ -30,25 +29,6 @@ class EmailService:
             html_body = f"""
                 <html>
                 <head>
-                    <style>
-                        body {{
-                            font-family: Arial, sans-serif;
-                            margin: 20px;
-                            padding: 20px;
-                            background-color: #f4f4f9;
-                        }}
-                        h1 {{
-                            color: #333;
-                        }}
-                        p {{
-                            font-size: 16px;
-                            color: #555;
-                        }}
-                        .important {{
-                            color: red;
-                            font-weight: bold;
-                        }}
-                    </style>
                 </head>
                 <body>
                     <h1>{email_contact.subject}</h1>
@@ -59,23 +39,6 @@ class EmailService:
                 """
 
             message.attach(MIMEText(html_body, 'html'))
-
-            # message.attach(MIMEText(body, 'html'))
-
-            # if attachments:
-            #     for file_path in attachments:
-            #         try:
-            #             with open(file_path, 'rb') as attachment:
-            #                 part = MIMEBase('application', 'octet-stream')
-            #                 part.set_payload(attachment.read())
-            #                 encoders.encode_base64(part)
-            #                 part.add_header(
-            #                     'Content-Disposition',
-            #                     f'attachment; filename={file_path.split("/")[-1]}',
-            #                 )
-            #                 message.attach(part)
-            #         except FileNotFoundError:
-            #             print(f"El archivo {file_path} no se encuentra.")
 
             with smtplib.SMTP(self.smtp_server, self.port) as server:
                 try:

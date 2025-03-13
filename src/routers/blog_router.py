@@ -10,7 +10,7 @@ from src.models.blog_model import CategoryBlog
 from src.services.blog_service import BlogService
 from src.services.image_service import ImageTool
 
-blog_router = APIRouter(prefix='/finance', tags=['Finance'])
+blog_router = APIRouter(prefix='/blog', tags=['Blog'])
 
 auth = AuthService()
 
@@ -32,17 +32,19 @@ async def create(
 
 @blog_router.get('/get_all')
 async def get_all(
+    request: Request,
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await BlogService(session).get_all()
+    return await BlogService(session).get_all(request)
 
 @blog_router.get('/get/{blog_id}')
 async def get(
+    request: Request,
     finance_id: str,
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await BlogService(session).get(finance_id, user)
+    return await BlogService(session).get(request, finance_id, user)
 
 @blog_router.get('get_image/{file_name}')
 async def get_image(
@@ -50,6 +52,12 @@ async def get_image(
 ):
     return await ImageTool(os.path.join('src', 'images', 'blog')).get_image(file_name)
 
+@blog_router.get('/get_last_image')
+async def get_last_image(
+    request: Request,
+    session: AsyncSession = Depends(db.get_session),
+):
+    return await BlogService(session).get_last_image(request)
 ############################### PUT ###############################
 
 @blog_router.put('/update/{blog_id}', status_code= status.HTTP_204_NO_CONTENT)

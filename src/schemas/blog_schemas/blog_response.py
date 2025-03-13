@@ -9,7 +9,7 @@ class BlogResponse(BaseModel):
     id: str
     title: str
     body: str
-    name_image: str
+    url_image: str
     categories: CategoryBlog
     galery: bool
     created_at: datetime
