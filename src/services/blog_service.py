@@ -1,5 +1,6 @@
 import base64
 from datetime import datetime, timezone
+import logging
 import os
 from typing import List
 import zlib
@@ -23,6 +24,7 @@ class BlogService:
 
     async def create(self, blog: BlogCreate, image: UploadFile):
         try:
+            logging.info("Creando blog")
             new_image = await ImageTool(os.path.join('src', 'images', 'blog')).save_image(image)
 
             if new_image is None:
@@ -39,6 +41,8 @@ class BlogService:
 
             await self.session.commit()
 
+            logging.info("Blog creado!")
+
             return JSONResponse(
                     content={
                         "blog_id": new_blog.id
@@ -46,6 +50,7 @@ class BlogService:
                     status_code=status.HTTP_201_CREATED
             )
         except Exception as e:
+            logging.error(f"Error al crear blog: {e}")
             if new_image:
                 ImageTool(os.path.join('src', 'images', 'blog')).delete_image(new_image)
             await self.session.rollback()
@@ -53,6 +58,7 @@ class BlogService:
 
     async def get_all(self, request: Request):
         try:
+            logging.info("Obteniendo blogs")
             sttmt = select(Blog).options(
                     joinedload(Blog.user)
                 )
@@ -77,12 +83,14 @@ class BlogService:
                 ).model_dump(mode='json')
                 for blog in blogs
             ]
+            logging.info("Blogs obtenidos")
 
             return JSONResponse(
                 content= list_blogs,
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
+            logging.error(f"Error al obtener blogs: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al intentar obtener el blog"
@@ -90,6 +98,7 @@ class BlogService:
         
     async def get(self, request: Request, blog_id: str):
         try:
+            logging.info("Obteniendo blog")
             sttmt = select(Blog).options(
                     joinedload(Blog.user)
                 ).where(
@@ -111,11 +120,14 @@ class BlogService:
             
             UserResponse.model_validate(blog.user)
 
+            logging.info("Blog obtenido")
+
             return JSONResponse(
                 content=BlogResponse.model_validate(blog).model_dump(mode='json'),
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
+            logging.error(f"Error al obtener blog: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al intentar obtener el blog"
@@ -123,6 +135,7 @@ class BlogService:
         
     async def update(self, blog: BlogUpdate, image: UploadFile | None):
         try:
+            logging.info("Actualizando blog")
             sttmt = select(Blog).where(
                     Blog.id == blog.id,
                 )
@@ -156,11 +169,14 @@ class BlogService:
                 exist_blog.url_image = file_name
 
             await self.session.commit()
+
+            logging.info("Blog actualizado")
             return JSONResponse(
                 content= {'detail': 'Blog editado con exito!'},
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
+            logging.error(f"Error al editar blog: {e}")
             await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -169,6 +185,7 @@ class BlogService:
         
     async def delete(self, blog_id: str):
         try:
+            logging.info("Eliminando blog")
             sttmt = select(Blog).where(Blog.id == blog_id)
             blog: Blog | None = (await self.session.exec(sttmt)).first()
             
@@ -184,11 +201,14 @@ class BlogService:
 
             await self.session.commit()
 
+            logging.info("Blog eliminado")
+
             return JSONResponse(
                 content= {"detail": "Blog eliminado con exito!"},
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
+            logging.error(f"Error al eliminar blog: {e}")
             await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -197,6 +217,7 @@ class BlogService:
         
     async def get_last_image(self, request: Request):
         try:
+            logging.info("Obteniendo ultimas imagenes")
             sttmt = select(Blog.url_image).order_by(Blog.created_at.desc()).where(Blog.galery == True).limit(20)
             images: List[str] = (await self.session.exec(sttmt)).all()
 
@@ -205,12 +226,15 @@ class BlogService:
             full_url = f"{scheme}://{host}/blog/get_image/"
 
             list_url: List[str] = [full_url+image for image in images]
+
+            logging.info("Imagenes obtenidas")
             
             return JSONResponse(
                 content={"images": list_url},
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
+            logging.error(f"Error al obtener imagenes")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al intentar obtener las últimas imágenes"

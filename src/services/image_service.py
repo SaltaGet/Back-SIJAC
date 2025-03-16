@@ -1,8 +1,9 @@
-from io import BytesIO
+import logging
 import uuid, os
 from fastapi import HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
-from PIL import Image
+import cv2
+import numpy as np
 
 
 class ImageTool:
@@ -24,124 +25,72 @@ class ImageTool:
         name, extension = os.path.splitext(filename)
         new_name = f"{uuid.uuid4()}{extension}"
         return new_name
-    
+
     async def save_image(self, image_file: UploadFile) -> str | None:
         if 'image' not in image_file.content_type:
-            raise JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato de imagen no soportado. Los formatos válidos son: JPEG, PNG")
+            raise JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Formato de imagen no soportado. Los formatos válidos son: JPEG, PNG"
+            )
         try:
+            logging.info("Guardando imagen")
+
             file_size = len(image_file.file.read())
-            image_file.file.seek(0)  
+            image_file.file.seek(0)
 
             if file_size > self.MAX_FILE_SIZE:
-                raise JSONResponse(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="La imagen no puede exceder los 2MB")
+                raise JSONResponse(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="La imagen no puede exceder los 2MB"
+                )
 
             file_extension = self.mime_to_extension[image_file.content_type]
             filename = await self.reset_name_image(f"{uuid.uuid4().hex}{file_extension}")
             file_location = os.path.join(self.path_image, filename)
 
-            image = Image.open(image_file.file)
-            
-            image.save(file_location, optimize=True, quality=85)
-            
-            while os.path.getsize(file_location) > 512 * 1024:
-                # quality = image.info.get('quality', 85)  # Usa 85 si no se encuentra 'quality'
-                quality = image.encoderconfig[0]
-                new_quality = quality - 5 if quality > 5 else 5
-                image.save(file_location, optimize=True, quality=new_quality)
-                # image.save(file_location, optimize=True, quality=image.info['quality'] - 5)
+            image_data = await image_file.read()
+            print(f"Tipo de image_data: {type(image_data)}, Tamaño: {len(image_data)} bytes")
 
+            image_array = np.frombuffer(image_data, dtype=np.uint8)
+            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+            if image is None:
+                raise JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El archivo no es una imagen válida"
+                )
+
+            image_resized = await self.resize_image(image)
+
+            if file_extension == '.jpg':
+                cv2.imwrite(file_location, image_resized, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            elif file_extension == '.png':
+                cv2.imwrite(file_location, image_resized, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+
+            while os.path.getsize(file_location) > 512 * 1024: 
+                if file_extension == '.jpg':
+                    quality = max(5, 85 - 5) 
+                    cv2.imwrite(file_location, image_resized, [cv2.IMWRITE_JPEG_QUALITY, quality])
+                elif file_extension == '.png':
+                    compression = max(3, 9 - 1)  
+                    cv2.imwrite(file_location, image_resized, [cv2.IMWRITE_PNG_COMPRESSION, compression])
+
+            logging.info("Imagen guardada")
             return filename
         except Exception as e:
+            logging.error(f"Error al guardar imagen: {e}")
             return None
-        
 
-    # async def save_image(self, image_file: UploadFile) -> str | None:
-    #     if 'image' not in image_file.content_type:
-    #         raise JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato de imagen no soportado. Los formatos válidos son: JPEG, PNG")
-        
-    #     # Asegúrate de reposicionar el puntero del archivo al principio
-    #     image_file.file.seek(0)
-        
-    #     # Leer el archivo de manera asíncrona
-    #     image_data = await image_file.read()
-
-    #     # Verificar si se obtuvo un archivo vacío
-    #     if not image_data:
-    #         raise JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, detail="El archivo está vacío o no se pudo leer correctamente.")
-
-    #     # Convertir los datos leídos en BytesIO
-    #     image_bytes = BytesIO(image_data)
-
-    #     # Verificar el tamaño del archivo
-    #     file_size = len(image_data)
-    #     if file_size > self.MAX_FILE_SIZE:
-    #         raise JSONResponse(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="La imagen no puede exceder los 2MB")
-
-    #     # Obtener la extensión del archivo
-    #     file_extension = self.mime_to_extension[image_file.content_type]
-    #     filename = await self.reset_name_image(f"{uuid.uuid4().hex}{file_extension}")
-    #     file_location = os.path.join(self.path_image, filename)
-
-    #     try:
-    #         # Abrir la imagen desde BytesIO
-    #         image = Image.open(image_bytes)
-    #         image.save(file_location, optimize=True, quality=85)
-
-    #         # Reducir el tamaño de la imagen si es necesario
-    #         while os.path.getsize(file_location) > 512 * 1024:
-    #             # Verificar si 'quality' existe en image.info antes de intentar restarlo
-    #             quality = image.info.get('quality', 85)  # Usa 85 si no se encuentra 'quality'
-    #             new_quality = quality - 5 if quality > 5 else 5
-    #             image.save(file_location, optimize=True, quality=new_quality)
-
-    #         return filename
-    #     except Exception as e:
-    #         return None
-
-    # async def save_image(self, image_file: UploadFile) -> str | None:
-    #     if 'image' not in image_file.content_type:
-    #         raise JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato de imagen no soportado. Los formatos válidos son: JPEG, PNG")
-        
-    #     image_file.file.seek(0)
-    #     image = Image.open(image_file.file)
-
-    #     image_data = await image_file.read()
-
-    #     if not image_data:
-    #         raise JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, detail="El archivo está vacío o no se pudo leer correctamente.")
-
-    #     image_bytes = BytesIO(image_data)
-
-    #     file_size = len(image_data)
-    #     if file_size > self.MAX_FILE_SIZE:
-    #         raise JSONResponse(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="La imagen no puede exceder los 2MB")
-
-    #     file_extension = self.mime_to_extension[image_file.content_type]
-    #     filename = await self.reset_name_image(f"{uuid.uuid4().hex}{file_extension}")
-    #     file_location = os.path.join(self.path_image, filename)
-
-    #     print(f"Tipo de image_bytes antes de Image.open(): {type(image_bytes)}")
-    #     print(f"Contenido de image_bytes (primeros 50 bytes): {image_bytes.getvalue()[:50]}")
-    #     print(f"Tamaño de image_bytes: {len(image_bytes.getvalue())}")
-
-    #     if not isinstance(image_bytes, BytesIO):
-    #         print(f"Error: image_bytes no es un BytesIO, sino {type(image_bytes)}")
-    #         return None
-        
-    #     try:
-    #         image = Image.open(fp= image_bytes, mode='r') # AQUI OCURRE EL ERROR
-    #         image.save(file_location, optimize=True, quality=85)
-
-    #         while os.path.getsize(file_location) > 512 * 1024:
-    #             quality = image.info.get('quality', 85)
-    #             new_quality = quality - 5 if quality > 5 else 5
-    #             image.save(file_location, optimize=True, quality=new_quality)
-
-    #         return filename
-    #     except Exception as e:
-    #         print(f"Error al procesar la imagen: {e}")
-    #         return None
-            
+    async def resize_image(self, image: np.ndarray) -> np.ndarray:
+        max_dimension = 1024
+        h, w = image.shape[:2]
+        if max(h, w) > max_dimension:
+            scaling_factor = max_dimension / float(max(h, w))
+            new_h, new_w = int(h * scaling_factor), int(w * scaling_factor)
+            image_resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            return image_resized
+        return image
+    
     async def delete_image(self, filename: str) -> None:
         media_path = os.path.join(self.path_image, filename)
         if os.path.exists(media_path):
@@ -151,6 +100,7 @@ class ImageTool:
         
     async def get_image(self, file_name: str):
         try:
+            logging.info("Obteniendo imagen")
             file_path = os.path.join(self.path_image, file_name)
 
             if not os.path.exists(file_path):
@@ -159,8 +109,11 @@ class ImageTool:
             file_extension = os.path.splitext(file_name)[1].lower()
             mime_type = self.mime_to_extension.get(file_extension, "application/octet-stream")
 
+            logging.info("Imagen obtenida")
+
             return FileResponse(file_path, media_type=mime_type, filename=file_name, status_code= status.HTTP_200_OK)
         except Exception as e:
+            logging.error(f"Error al obtener imagen: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al intentar obtener la imagen"

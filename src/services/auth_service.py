@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import logging
 from fastapi import Depends, HTTPException, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 import jwt
@@ -21,6 +22,7 @@ class AuthService:
         }
 
     async def create_token(self, user: User, hs: int = 2):
+        logging.info("Creando token")
         expire = datetime.now(timezone.utc) + timedelta(hours=hs)
         data = {
             'user_id': user.id,
@@ -31,23 +33,28 @@ class AuthService:
             'role': user.role,
         }
         encoded_jwt = jwt.encode(data, config('SECRET_KEY'), algorithm="HS256")
+        logging.info("Token obtenido")
         return encoded_jwt
 
     async def decode_token(self, token):
         try:
+            logging.info("Decodificando token")
             data = jwt.decode(token, config('SECRET_KEY'), algorithms=["HS256"])
             return data
         except jwt.ExpiredSignatureError:
+            logging.error("Error al decodificar token")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token expirado",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         except Exception as e:
+            logging.error("Error al decodificar token")
             return None
 
     async def get_current_user(self, token: Annotated[str, Depends(oauth_scheme)], session: AsyncSession = Depends(db.get_session)):
         try:
+            logging.info("Obteniendo usuario actual")
             if not token:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -71,9 +78,11 @@ class AuthService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Usuario no encontrado",
                 )
+            logging.info("Usuario obtendio")
 
             return user
         except Exception as e:
+            logging.error(f"Error al obtener usuario: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Access Token no válido",

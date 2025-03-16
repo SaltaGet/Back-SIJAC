@@ -1,3 +1,4 @@
+import logging
 import smtplib
 from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
@@ -21,10 +22,11 @@ class EmailService:
         email_contact: EmailContact
     ) -> None:
         try:
+            logging.info("Enviando email")
             message_convivir = MIMEMultipart()
             message_convivir['From'] = self.email
             message_convivir['To'] = self.email
-            message_convivir['Subject'] = f"Contacto{email_contact.subject}"
+            message_convivir['Subject'] = f"Contacto {email_contact.subject}"
 
             message_to = MIMEMultipart()
             message_to['From'] = self.email
@@ -70,9 +72,10 @@ class EmailService:
                     server.login(self.email, self.password)
                     server.send_message(message_to)
                     server.send_message(message_convivir)
+                    logging.info("Email enviado")
                 except smtplib.SMTPException as e:
-                    print(f"Error sending email: {e}")
+                    logging.error(f"Error sending email: {e}")
                     raise
         except Exception as e:
-            print(e)
+            logging.error(f"Error al enviar email")
             raise

@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 import bcrypt
 from fastapi import HTTPException, status
 from src.models.user_model import RoleUser, User
@@ -16,6 +17,7 @@ class UserService:
 
     async def login(self, credentials:UserCredentials):
         try:
+            logging.info("Logueando usuario")
             statement = select(User).where(User.email == credentials.email)
             user: User | None = (await self.session.exec(statement)).first()
 
@@ -35,16 +37,20 @@ class UserService:
 
             await self.session.commit()
 
+            logging.info("Login exitoso")
+
             return JSONResponse(
                 content=token,
                 status_code=status.HTTP_200_OK
             )
 
         except Exception as e:
+            logging.error("Error login: {e}")
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar loguear")
         
     async def create_user(self, user: UserCreate, is_admin: bool = False):
             try:
+                logging.info("Creando usuario")
                 statement= select(User).where(User.email == user.email)
                                             
                 result = await self.session.exec(statement)
@@ -70,12 +76,14 @@ class UserService:
                 self.session.add(new_user)
 
                 await self.session.commit()
+                logging.info("usuario creado")
 
                 return JSONResponse(
                             status_code=status.HTTP_201_CREATED, 
                             content={"detail": "Usuario creado exitosamente."}
                             )
             except Exception as e:
+                logging.error(f"error al crear usuario: {e}")
                 raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al crear usuario.')
             
     # async def update_user(self, user_update: UserUpdate, user: User):
