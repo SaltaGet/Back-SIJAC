@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from contextlib import asynccontextmanager
+from src.config.init_data import init_data
 from src.config.logging_config import setup_logging
 from src.middleware.timing import TimingMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,6 +48,9 @@ async def lifespan(app: FastAPI):
             logging.error(f"Error al conectar a la base de datos: {e}")
             raise e
     await db.create_tables()
+    async for session in db.get_session():
+        await init_data(session)
+        break
     yield
     if not db.is_closed():
         await db.close()

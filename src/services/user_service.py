@@ -1,7 +1,7 @@
 from datetime import date
 import bcrypt
 from fastapi import HTTPException, status
-from src.models.user_model import User
+from src.models.user_model import RoleUser, User
 from sqlmodel import select, or_
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
@@ -43,7 +43,7 @@ class UserService:
         except Exception as e:
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar loguear")
         
-    async def create_user(self, user: UserCreate):
+    async def create_user(self, user: UserCreate, is_admin: bool = False):
             try:
                 statement= select(User).where(User.email == user.email)
                                             
@@ -51,11 +51,11 @@ class UserService:
                 user_exist: User | None = result.first()
                 
                 if(user_exist != None):
-                    if user_exist.username == user.username:
-                        return JSONResponse(
-                            status_code=status.HTTP_409_CONFLICT, 
-                            content={"detail": "El username ya se encuentra en uso"}
-                            )
+                    # if user_exist.username == user.username:
+                    #     return JSONResponse(
+                    #         status_code=status.HTTP_409_CONFLICT, 
+                    #         content={"detail": "El username ya se encuentra en uso"}
+                    #         )
                     if user_exist.email == user.email:
                         return JSONResponse(
                             status_code=status.HTTP_409_CONFLICT, 
@@ -63,6 +63,10 @@ class UserService:
                             )
 
                 new_user: User = User(**user.model_dump())
+
+                if is_admin == True:
+                    new_user.role = RoleUser.ADMIN
+
                 self.session.add(new_user)
 
                 await self.session.commit()

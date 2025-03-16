@@ -21,30 +21,55 @@ class EmailService:
         email_contact: EmailContact
     ) -> None:
         try:
-            message = MIMEMultipart()
-            message['From'] = email_contact.from_email or self.username
-            message['To'] = email_contact.to_email
-            message['Subject'] = email_contact.subject
+            message_convivir = MIMEMultipart()
+            message_convivir['From'] = self.email
+            message_convivir['To'] = self.email
+            message_convivir['Subject'] = f"Contacto{email_contact.subject}"
 
-            html_body = f"""
+            message_to = MIMEMultipart()
+            message_to['From'] = self.email
+            message_to['To'] = email_contact.email
+            message_to['Subject'] = 'Fundación Convivir'
+
+            html_convivir = f"""
                 <html>
                 <head>
                 </head>
-                <body>
-                    <h1>{email_contact.subject}</h1>
-                    <p>{email_contact.body}</p>
-                    <p class="important">Este es un mensaje importante con formato HTML y estilos.</p>
+                <body style="padding: 40px;">
+                    <h2>Datos de Contacto</h2>
+                    <p style="text-indent: 40px;"><strong>Nombre: </strong>{email_contact.full_name}</p>
+                    <p style="text-indent: 40px;"><strong>Teléfono: </strong> {email_contact.cellphone}</p>
+                    <p style="text-indent: 40px;"><strong>Email: </strong> {email_contact.email}</p>
+
+                    <h3>Motivo:</h3>
+                    <p style="text-indent: 40px;">{email_contact.body}</p>
+                </body>
+                </html>
+                """
+            
+            html_to = f"""
+                <html>
+                <head>
+                </head>
+                <body style="padding: 40px;">
+                    <h2 style="text-align: center;">Hola {email_contact.full_name}!!!</h2>
+                    <p style="text-align: start;">Usted ha comunicado con nosotros por el siguiente motivo:</p>
+                    <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{email_contact.body}"</p>
+                    <p style="text-align: center;">Nos pondremos en contacto contigo lo mas antes posible.</p>
+                    <h2 style="text-align: center;">Gracias por contacarte con Fundación Convivir!!!</h2>
                 </body>
                 </html>
                 """
 
-            message.attach(MIMEText(html_body, 'html'))
+            message_convivir.attach(MIMEText(html_convivir, 'html'))
+            message_to.attach(MIMEText(html_to, 'html'))
 
             with smtplib.SMTP(self.smtp_server, self.port) as server:
                 try:
                     server.starttls()
                     server.login(self.email, self.password)
-                    server.send_message(message)
+                    server.send_message(message_to)
+                    server.send_message(message_convivir)
                 except smtplib.SMTPException as e:
                     print(f"Error sending email: {e}")
                     raise
