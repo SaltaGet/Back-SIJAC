@@ -112,7 +112,7 @@ class BlogService:
             UserResponse.model_validate(blog.user)
 
             return JSONResponse(
-                content={"blog": BlogResponse.model_validate(blog)},
+                content=BlogResponse.model_validate(blog).model_dump(mode='json'),
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
@@ -143,7 +143,7 @@ class BlogService:
 
             if image is not None:
                 image_tool = ImageTool(os.path.join('src', 'images', 'blog'))
-                file_name = image_tool.save_image(image)
+                file_name = await image_tool.save_image(image)
 
                 if file_name is None:
                     raise HTTPException(
@@ -155,10 +155,10 @@ class BlogService:
 
                 exist_blog.url_image = file_name
 
-            self.session.commit()
+            await self.session.commit()
             return JSONResponse(
-                content={},
-                status_code=status.HTTP_204_NO_CONTENT
+                content= {'detail': 'Blog editado con exito!'},
+                status_code=status.HTTP_200_OK
             )
         except Exception as e:
             await self.session.rollback()

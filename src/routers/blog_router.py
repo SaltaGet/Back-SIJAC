@@ -40,13 +40,12 @@ async def get_all(
 @blog_router.get('/get/{blog_id}')
 async def get(
     request: Request,
-    finance_id: str,
-    user: User = Depends(auth.get_current_user),
+    blog_id: str,
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await BlogService(session).get(request, finance_id, user)
+    return await BlogService(session).get(request, blog_id)
 
-@blog_router.get('get_image/{file_name}')
+@blog_router.get('/get_image/{file_name}')
 async def get_image(
     file_name: str,
 ):
@@ -60,26 +59,27 @@ async def get_last_image(
     return await BlogService(session).get_last_image(request)
 ############################### PUT ###############################
 
-@blog_router.put('/update/{blog_id}', status_code= status.HTTP_204_NO_CONTENT)
+@blog_router.put('/update/{blog_id}', status_code= status.HTTP_200_OK)
 async def update(
     blog_id: str,
     title: str = Form(reqired= True, min_length=1, max_length=100, description='El titulo contener de 3 a 100 carácteres'),
     body: str = Form(reqired= True, min_length=1, description='El cuerpo no puede estar vacio'),
     categories: CategoryBlog = Form(...),
     image: UploadFile | None = File(None),
+    galery: bool = Form(True),
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    blog: BlogUpdate = BlogUpdate(id= blog_id, title= title, body= body, categories= categories, user_id= user.id)
+    blog: BlogUpdate = BlogUpdate(id= blog_id, title= title, body= body, categories= categories, galery= galery, user_id= user.id)
     return await BlogService(session).update(blog, image)
 
 ############################### DELETE ###############################
 
-@blog_router.delete('/delete_finance/{finance_id}')
+@blog_router.delete('/delete/{blog_id}')
 async def delete(
-    finance_id: str,
+    blog_id: str,
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await BlogService(session).delete(finance_id, user)
+    return await BlogService(session).delete(blog_id)
 
