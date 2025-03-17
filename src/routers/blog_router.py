@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.db import db
 from src.models.user_model import User
@@ -31,9 +31,11 @@ async def create(
 @blog_router.get('/get_all')
 async def get_all(
     request: Request,
+    page: int = Query(1, alias="page", ge=1),
+    per_page: int = Query(9, alias="per_page", ge=1, le=50),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await BlogService(session).get_all(request)
+    return await BlogService(session).get_all(request, page, per_page)
 
 @blog_router.get('/get/{blog_id}')
 async def get(

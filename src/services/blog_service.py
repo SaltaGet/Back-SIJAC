@@ -56,44 +56,55 @@ class BlogService:
             await self.session.rollback()
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar crear el blog")
 
-    async def get_all(self, request: Request):
+    async def get_all(self, request: Request, page: int = 1, per_page: int = 9):
         try:
-            logging.info("Obteniendo blogs")
-            sttmt = select(Blog).options(
-                    joinedload(Blog.user)
-                )
-           
-            blogs: List[Blog] = (await self.session.exec(sttmt)).all()
-
+            logging.info("Obteniendo blogs paginados")
+            offset = (page - 1) * per_page
+            
+            sttmt = (
+                select(Blog)
+                .options(joinedload(Blog.user))
+                .limit(per_page)
+                .offset(offset)
+            )
+            
+            blogs: List[Blog] = (await self.session.execute(sttmt)).scalars().all()
+            
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
             full_url = f"{scheme}://{host}/blog/get_image/"
             
             list_blogs: List[BlogResponse] = [
                 BlogResponse(
-                    id= blog.id,
-                    title= blog.title,
-                    body= blog.body,
-                    categories= blog.categories,
-                    galery= blog.galery,
-                    url_image= full_url+blog.url_image,
-                    created_at= blog.created_at.isoformat(),
-                    updated_at= blog.updated_at.isoformat(),
-                    user = UserResponse.model_validate(blog.user)
+                    id=blog.id,
+                    title=blog.title,
+                    body=blog.body,
+                    categories=blog.categories,
+                    galery=blog.galery,
+                    url_image=full_url + blog.url_image,
+                    created_at=blog.created_at.isoformat(),
+                    updated_at=blog.updated_at.isoformat(),
+                    user=UserResponse.model_validate(blog.user)
                 ).model_dump(mode='json')
                 for blog in blogs
             ]
-            logging.info("Blogs obtenidos")
-
+            
+            logging.info("Blogs obtenidos correctamente")
+            
             return JSONResponse(
-                content= list_blogs,
-                status_code=status.HTTP_200_OK
+                content={
+                    "page": page,
+                    "per_page": per_page,
+                    "total": len(blogs),
+                    "blogs": list_blogs
+                },
+                status_code=200
             )
         except Exception as e:
             logging.error(f"Error al obtener blogs: {e}")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener el blog"
+                status_code=500,
+                detail="Error al intentar obtener los blogs"
             )
         
     async def get(self, request: Request, blog_id: str):

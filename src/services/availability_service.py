@@ -1,5 +1,5 @@
 import base64
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import logging
 import os
 from typing import List
@@ -7,12 +7,14 @@ import zlib
 from fastapi import HTTPException, Request, status, UploadFile
 from src.models.availability import Availability
 from src.models.blog_model import Blog
-from sqlmodel import select
+from sqlmodel import between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
 from src.models.user_model import User
 from src.schemas.availability_schema.availability_create import AvailabilityCreate
+from src.schemas.availability_schema.availability_get import AvailabilityGet
+from src.schemas.availability_schema.availability_response import AvailabilityResponse
 from src.schemas.blog_schemas.blog_create import BlogCreate
 from src.schemas.blog_schemas.blog_response import BlogResponse
 from src.schemas.blog_schemas.blog_update import BlogUpdate
@@ -57,37 +59,31 @@ class AvailabilityService:
             await self.session.rollback()
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar crear la disponibilidad")
 
-    async def get_all(self, request: Request):
+    async def get_all(self, user_id: str, date_start: date = None, date_end: date = None):
         try:
-            logging.info("Obteniendo blogs")
-            sttmt = select(Blog).options(
-                    joinedload(Blog.user)
-                )
+            logging.info("Obteniendo Availabilities")
+            if date_start is not None and date_end is not None:
+                sttmt = select(Availability).where(
+                    between(Availability.date_all, date_start, date_end)
+                ).where(Availability.user_id == user_id)
+            else: 
+                sttmt = select(Availability).where(Availability.user_id == user_id)
            
-            blogs: List[Blog] = (await self.session.exec(sttmt)).all()
+            availabilities: list[Availability] = (await self.session.exec(sttmt)).all()
 
-            scheme = request.scope.get("scheme") 
-            host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/blog/get_image/"
-            
-            list_blogs: List[BlogResponse] = [
-                BlogResponse(
-                    id= blog.id,
-                    title= blog.title,
-                    body= blog.body,
-                    categories= blog.categories,
-                    galery= blog.galery,
-                    url_image= full_url+blog.url_image,
-                    created_at= blog.created_at.isoformat(),
-                    updated_at= blog.updated_at.isoformat(),
-                    user = UserResponse.model_validate(blog.user)
+            list_availabilities: list[AvailabilityResponse] = [
+                AvailabilityResponse(
+                    id= avail.id,
+                    date_all = avail.date_all,
+                    start_time= avail.start_time,
+                    end_time= avail.end_time,
                 ).model_dump(mode='json')
-                for blog in blogs
+                for avail in availabilities
             ]
-            logging.info("Blogs obtenidos")
+            logging.info("Disponibilidades obtenidas")
 
             return JSONResponse(
-                content= list_blogs,
+                content= list_availabilities,
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
@@ -97,22 +93,20 @@ class AvailabilityService:
                 detail="Error al intentar obtener el blog"
             )
         
-    async def get(self, available_id: str, ):
+    async def get(self, available_get: AvailabilityGet, ):
         try:
-            logging.info("Obteniendo blog")
-            sttmt = select(Blog).options(
-                    joinedload(Blog.user)
+            logging.info("Obteniendo disponibilidad")
+            sttmt = select(Availability).options(
+                    joinedload(Availability.appointments)
                 ).where(
-                    Blog.id == blog_id,
+                    Availability.date_all == available_get.date_all,
+                    Availability.user_id == available_get.user_id
                 )
+            
+            ##########Continuar aqui
            
             blog: Blog | None = (await self.session.exec(sttmt)).first()
 
-            scheme = request.scope.get("scheme") 
-            host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/blog/get_image/"
-            blog.url_image = full_url+blog.url_image
-            
             if blog is None:
                 return JSONResponse(
                     content={"detail": "Blog no encontrado"},
