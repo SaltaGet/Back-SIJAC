@@ -30,12 +30,6 @@ async def login(
 ):
     return await UserService(session).login(credentials)
 
-@user_router.post('/send_mail')
-async def send_mail(
-    contact: EmailContact
-):
-    return await EmailService().send_email(contact)
-
 @user_router.post('/logout')
 async def login(
     refresh_token: str =  Form(),

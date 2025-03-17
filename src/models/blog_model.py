@@ -21,6 +21,5 @@ class Blog(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     categories: CategoryBlog = Field(sa_column=Column(SQLAlchemyEnum(CategoryBlog)), default=CategoryBlog.SEVERAL)
-    galery: bool = Field(default= True)
     user_id: str = Field(foreign_key='users.id')
     user: "User" = Relationship(back_populates="blogs")

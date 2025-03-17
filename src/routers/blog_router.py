@@ -1,4 +1,3 @@
-import os
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.db import db
@@ -8,7 +7,6 @@ from src.schemas.blog_schemas.blog_update import BlogUpdate
 from src.services.auth_service import AuthService
 from src.models.blog_model import CategoryBlog
 from src.services.blog_service import BlogService
-from src.services.image_service import ImageTool
 
 blog_router = APIRouter(prefix='/blog', tags=['Blog'])
 
@@ -45,18 +43,6 @@ async def get(
 ):
     return await BlogService(session).get(request, blog_id)
 
-@blog_router.get('/get_image/{file_name}')
-async def get_image(
-    file_name: str,
-):
-    return await ImageTool(os.path.join('src', 'images', 'blog')).get_image(file_name)
-
-@blog_router.get('/get_last_image')
-async def get_last_image(
-    request: Request,
-    session: AsyncSession = Depends(db.get_session),
-):
-    return await BlogService(session).get_last_image(request)
 ############################### PUT ###############################
 
 @blog_router.put('/update/{blog_id}', status_code= status.HTTP_200_OK)
