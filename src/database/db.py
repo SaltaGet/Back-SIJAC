@@ -33,6 +33,9 @@ class DataBase:
             logging.info('Validando tablas...')
             from src.models.user_model import User
             from src.models.blog_model import Blog
+            from src.models.refresh_token import HistorialRefreshToken
+            from src.models.availability import Availability
+            from src.models.appointment import Appointment
 
             async with self.engine.begin() as conn:
                 await conn.run_sync(SQLModel.metadata.create_all)

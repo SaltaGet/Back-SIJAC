@@ -31,7 +31,7 @@ class EmailService:
             message_to = MIMEMultipart()
             message_to['From'] = self.email
             message_to['To'] = email_contact.email
-            message_to['Subject'] = 'Fundación Convivir'
+            message_to['Subject'] = 'SIJAC'
 
             html_convivir = f"""
                 <html>
@@ -40,7 +40,7 @@ class EmailService:
                 <body style="padding: 40px;">
                     <h2>Datos de Contacto</h2>
                     <p style="text-indent: 40px;"><strong>Nombre: </strong>{email_contact.full_name}</p>
-                    <p style="text-indent: 40px;"><strong>Teléfono: </strong> {email_contact.cellphone}</p>
+                    <p style="text-indent: 40px;"><strong>Teléfono: </strong>{email_contact.cellphone}</p>
                     <p style="text-indent: 40px;"><strong>Email: </strong> {email_contact.email}</p>
 
                     <h3>Motivo:</h3>
@@ -58,7 +58,7 @@ class EmailService:
                     <p style="text-align: start;">Usted ha comunicado con nosotros por el siguiente motivo:</p>
                     <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{email_contact.body}"</p>
                     <p style="text-align: center;">Nos pondremos en contacto contigo lo mas antes posible.</p>
-                    <h2 style="text-align: center;">Gracias por contacarte con Fundación Convivir!!!</h2>
+                    <h2 style="text-align: center;">Gracias por contacarte con SIJAC!!!</h2>
                 </body>
                 </html>
                 """

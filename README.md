@@ -1,6 +1,6 @@
-# API Convivir
+# API SIJAC
 
-API para Convivir.
+API para SIJAC.
 
 ## Requisitos
 
@@ -11,7 +11,7 @@ API para Convivir.
 ### Crear .env
     Crear un archivo ".env" con los siguientes campos:
     ```sh
-    DB_NAME = 'convivir'  "dejar por defecto este nombre"
+    DB_NAME = 'sijac'  "dejar por defecto este nombre"
     DB_HOST = 'host de la db'
     DB_USER = 'usuario de la base de datos'
     DB_PASSWORD = 'password de la base de datos'
@@ -32,8 +32,8 @@ API para Convivir.
 1. Clona el repositorio:
 
     ```sh
-    git clone https://github.com/SaltaGet/Back-Georgina.git
-    cd Back-Georgina
+    git clone https://github.com/SaltaGet/Back-SIJAC.git
+    cd Back-SIJAC
     ```
 
 2. Crea y activa un entorno virtual:
@@ -54,8 +54,8 @@ API para Convivir.
 1. Clona el repositorio:
 
     ```sh
-    git clone https://github.com/SaltaGet/Back-Georgina.git
-    cd Back-Georgina
+    git clone https://github.com/SaltaGet/Back-SIJAC.git
+    cd Back-SIJAC
     ```
 
 2. Crea y activa un entorno virtual:
@@ -93,10 +93,10 @@ Una vez iniciada la aplicación dirigirse a para ver la documentacion:
 
 Documentacion Swagger
 ```sh
-http://127.0.0.1:8000
+http://0.0.0.0:8000
 ```
 
 Documentación Redoc 
 ```sh
-http://127.0.0.1:8000/redoc
+http://0.0.0.0:8000/redoc
 ```

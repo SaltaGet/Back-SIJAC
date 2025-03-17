@@ -13,8 +13,8 @@ from src.routers.blog_router import blog_router
 
 setup_logging()
 
-app = FastAPI(title= 'API Fundación Convivir',
-            description='API Fundación Convivir',
+app = FastAPI(title= 'API SIJAC',
+            description='API SIJAC',
             version='0.0.1',
             docs_url='/',
             )

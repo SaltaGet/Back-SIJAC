@@ -11,7 +11,7 @@ class RoleUser(str, Enum):
 
 class User(SQLModel, table=True):
     __tablename__ = 'users'
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True, index=True)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     username: str = Field(max_length=50)
     email: str = Field(max_length=50, unique=True, index=True)
     first_name: str = Field(max_length=100)
@@ -21,3 +21,5 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     blogs: List["Blog"] = Relationship(back_populates='user')
+    availabilities: list["Availability"] = Relationship(back_populates='user')
+    appointments: list["Appointment"] = Relationship(back_populates='user')

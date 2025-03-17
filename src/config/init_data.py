@@ -11,10 +11,10 @@ async def init_data(session: AsyncSession):
         logging.info("Creando usuario admin.")
         user_admin = UserCreate(
             username= 'Admin',
-            email= 'admin@convivir.com',
-            password_hash= 'FundConvivir25!',
-            first_name= 'Fundación',
-            last_name= 'Convivir',
+            email= 'admin@sijac.com',
+            password_hash= 'Sijac2025!',
+            first_name= 'Consultora',
+            last_name= 'SIJAC',
         )
 
         response =  await UserService(session).create_user(user_admin, True)
