@@ -1,13 +1,14 @@
-from datetime import date
+from datetime import date, time
 from pydantic import BaseModel
 
-class AvailabilityGet(BaseModel):
+class AppointmentDto(BaseModel):
     id: str
-    user_id: str
-    date_all: date
+    date_get: date
+    time_get: time
 
     class Config:
         from_attributes = True
         json_encoders = {
             date: lambda v: v.isoformat() if isinstance(v, date) else v,
+            time: lambda v: v.isoformat() if isinstance(v, time) else v,
         }

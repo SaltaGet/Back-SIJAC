@@ -1,18 +1,17 @@
-from datetime import date, datetime, time
+from datetime import date
 from pydantic import BaseModel
 
-from src.models.blog_model import CategoryBlog
-from src.schemas.user_schema.user_response import UserResponse
+from src.models.appointment import Appointment
+from src.schemas.appointment_schema.appointment_dto import AppointmentDto
 
-
-class AvailabilityResponse(BaseModel):
+class AvailabilityResponseDto(BaseModel):
     id: str
+    user_id: str
     date_all: date
-    start_time: time
-    end_time: time
+    appointments: list[AppointmentDto]
 
     class Config:
         from_attributes = True
-        # json_encoders = {
-        #     date: lambda v: v.isoformat() if isinstance(v, datetime) else v,
-        # }
+        json_encoders = {
+            date: lambda v: v.isoformat() if isinstance(v, date) else v,
+        }

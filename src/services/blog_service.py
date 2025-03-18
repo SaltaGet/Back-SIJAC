@@ -80,7 +80,6 @@ class BlogService:
                     title=blog.title,
                     body=blog.body,
                     categories=blog.categories,
-                    galery=blog.galery,
                     url_image=full_url + blog.url_image,
                     created_at=blog.created_at.isoformat(),
                     updated_at=blog.updated_at.isoformat(),
@@ -162,7 +161,6 @@ class BlogService:
             exist_blog.title = blog.title
             exist_blog.body = blog.body
             exist_blog.categories = blog.categories
-            exist_blog.galery = blog.galery
             exist_blog.updated_at = datetime.now(timezone.utc)
 
             if image is not None:
@@ -224,31 +222,6 @@ class BlogService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al intentar eliminar el blog"
-            )
-        
-    async def get_last_image(self, request: Request):
-        try:
-            logging.info("Obteniendo ultimas imagenes")
-            sttmt = select(Blog.url_image).order_by(Blog.created_at.desc()).where(Blog.galery == True).limit(20)
-            images: List[str] = (await self.session.exec(sttmt)).all()
-
-            scheme = request.scope.get("scheme") 
-            host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/blog/get_image/"
-
-            list_url: List[str] = [full_url+image for image in images]
-
-            logging.info("Imagenes obtenidas")
-            
-            return JSONResponse(
-                content={"images": list_url},
-                status_code=status.HTTP_200_OK
-            )
-        except Exception as e:
-            logging.error(f"Error al obtener imagenes")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener las últimas imágenes"
             )
         
     async def compress_string(self, data):

@@ -12,9 +12,11 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
 from src.models.user_model import User
+from src.schemas.appointment_schema.appointment_dto import AppointmentDto
 from src.schemas.availability_schema.availability_create import AvailabilityCreate
 from src.schemas.availability_schema.availability_get import AvailabilityGet
-from src.schemas.availability_schema.availability_response import AvailabilityResponse
+from src.schemas.availability_schema.availability_dto import AvailabilityResponse
+from src.schemas.availability_schema.availability_response import AvailabilityResponseDto
 from src.schemas.blog_schemas.blog_create import BlogCreate
 from src.schemas.blog_schemas.blog_response import BlogResponse
 from src.schemas.blog_schemas.blog_update import BlogUpdate
@@ -99,33 +101,35 @@ class AvailabilityService:
             sttmt = select(Availability).options(
                     joinedload(Availability.appointments)
                 ).where(
-                    Availability.date_all == available_get.date_all,
-                    Availability.user_id == available_get.user_id
+                    Availability.id == available_get.id,
                 )
-            
-            ##########Continuar aqui
-           
-            blog: Blog | None = (await self.session.exec(sttmt)).first()
+            exist_available: Availability | None = (await self.session.exec(sttmt)).first()
 
-            if blog is None:
+            if exist_available is None:
                 return JSONResponse(
-                    content={"detail": "Blog no encontrado"},
+                    content={"detail": "Disponibilidad no encontrada"},
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            UserResponse.model_validate(blog.user)
-
-            logging.info("Blog obtenido")
+            if exist_available.user_id != available_get.user_id or exist_available.date_all != available_get.date_all:
+                return JSONResponse(
+                    content={"detail": "Disponibilidad erronea"},
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            exist_available.appointments = [AppointmentDto.model_validate(appointment).model_dump(mode='json') for appointment in exist_available.appointments]
+            
+            logging.info("Disponibilidad obtenida")
 
             return JSONResponse(
-                content=BlogResponse.model_validate(blog).model_dump(mode='json'),
+                content=AvailabilityResponseDto.model_validate(exist_available).model_dump(mode='json'),
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
-            logging.error(f"Error al obtener blog: {e}")
+            logging.error(f"Error al obtener disponibilidad: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener el blog"
+                detail="Error al intentar obtener la disponibilidad"
             )
         
     async def update(self, blog: BlogUpdate, image: UploadFile | None):
@@ -146,7 +150,6 @@ class AvailabilityService:
             exist_blog.title = blog.title
             exist_blog.body = blog.body
             exist_blog.categories = blog.categories
-            exist_blog.galery = blog.galery
             exist_blog.updated_at = datetime.now(timezone.utc)
 
             if image is not None:
@@ -210,35 +213,3 @@ class AvailabilityService:
                 detail="Error al intentar eliminar el blog"
             )
         
-    async def get_last_image(self, request: Request):
-        try:
-            logging.info("Obteniendo ultimas imagenes")
-            sttmt = select(Blog.url_image).order_by(Blog.created_at.desc()).where(Blog.galery == True).limit(20)
-            images: List[str] = (await self.session.exec(sttmt)).all()
-
-            scheme = request.scope.get("scheme") 
-            host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/blog/get_image/"
-
-            list_url: List[str] = [full_url+image for image in images]
-
-            logging.info("Imagenes obtenidas")
-            
-            return JSONResponse(
-                content={"images": list_url},
-                status_code=status.HTTP_200_OK
-            )
-        except Exception as e:
-            logging.error(f"Error al obtener imagenes")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener las últimas imágenes"
-            )
-        
-    async def compress_string(self, data):
-        compressed = zlib.compress(data.encode('utf-8'))
-        return base64.b64encode(compressed).decode('utf-8')
-    
-    async def decompress_string(self, compressed_data):
-        compressed = base64.b64decode(compressed_data.encode('utf-8'))
-        return zlib.decompress(compressed).decode('utf-8')

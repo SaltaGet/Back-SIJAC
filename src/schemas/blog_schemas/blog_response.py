@@ -11,7 +11,6 @@ class BlogResponse(BaseModel):
     body: str
     url_image: str
     categories: CategoryBlog
-    galery: bool
     created_at: datetime
     updated_at: datetime
     user: UserResponse 

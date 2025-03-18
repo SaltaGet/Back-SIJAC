@@ -54,11 +54,10 @@ async def update(
     body: str = Form(reqired= True, min_length=1, description='El cuerpo no puede estar vacio'),
     categories: CategoryBlog = Form(...),
     image: UploadFile | None = File(None),
-    galery: bool = Form(True),
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    blog: BlogUpdate = BlogUpdate(id= blog_id, title= title, body= body, categories= categories, galery= galery, user_id= user.id)
+    blog: BlogUpdate = BlogUpdate(id= blog_id, title= title, body= body, categories= categories, user_id= user.id)
     return await BlogService(session).update(blog, image)
 
 ############################### DELETE ###############################
