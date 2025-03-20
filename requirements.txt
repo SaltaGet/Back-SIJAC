@@ -1,6 +1,7 @@
 aiosqlite==0.20.0
 annotated-types==0.7.0
 anyio==4.7.0
+APScheduler==3.11.0
 bcrypt==4.2.1
 certifi==2024.12.14
 click==8.1.8
@@ -22,5 +23,6 @@ SQLAlchemy==2.0.36
 sqlmodel==0.0.22
 starlette==0.41.3
 typing_extensions==4.12.2
+tzlocal==5.3.1
 urllib3==2.3.0
 uvicorn==0.34.0
