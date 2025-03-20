@@ -6,6 +6,7 @@ class AvailabilityDto(BaseModel):
     date_all: date
     start_time: time
     end_time: time
+    disponibility: bool
 
     class Config:
         from_attributes = True

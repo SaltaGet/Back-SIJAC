@@ -2,10 +2,14 @@ from fastapi import Depends, FastAPI
 from contextlib import asynccontextmanager
 from src.config.init_data import init_data
 from src.config.logging_config import setup_logging
+from src.config.scheduler_task import backup_database
 from src.middleware.timing import TimingMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from src.database.db import db
 import logging
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from src.routers.user_router import user_router
 from src.routers.blog_router import blog_router
 
@@ -36,7 +40,11 @@ app.add_middleware(
 
 app.add_middleware(TimingMiddleware)
 
-# app.add_middleware(AuthMiddleware)
+scheduler = AsyncIOScheduler()
+
+# scheduler.add_job(backup_database, CronTrigger(day_of_week="sun", hour=4, minute=0))
+scheduler.add_job(backup_database, CronTrigger(day_of_week="thu", hour=1, minute=35))
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,6 +59,9 @@ async def lifespan(app: FastAPI):
     async for session in db.get_session():
         await init_data(session)
         break
+
+    scheduler.start()
+    logging.info("🚀 Scheduler iniciado")
     yield
     if not db.is_closed():
         await db.close()

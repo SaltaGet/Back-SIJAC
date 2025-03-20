@@ -10,6 +10,6 @@ class Availability(SQLModel, table= True):
     date_all: date = Field(index= True)
     start_time: time = Field()
     end_time: time = Field()
-    user_id: str = Field(foreign_key= 'users.id', index= True)
+    user_id: str = Field(foreign_key= 'users.id', index= True, ondelete= 'CASCADE')
     user: "User" = Relationship(back_populates="availabilities")
     appointments: list["Appointment"] = Relationship(back_populates='availability')

@@ -1,13 +1,11 @@
-import base64
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 import logging
 import os
-from typing import List
-import zlib
 from fastapi import HTTPException, Request, status, UploadFile
+from src.models.appointment import Appointment, StateAppointment
 from src.models.availability import Availability
 from src.models.blog_model import Blog
-from sqlmodel import between, select
+from sqlmodel import asc, between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
@@ -15,12 +13,10 @@ from src.models.user_model import User
 from src.schemas.appointment_schema.appointment_dto import AppointmentDto
 from src.schemas.availability_schema.availability_create import AvailabilityCreate
 from src.schemas.availability_schema.availability_get import AvailabilityGet
-from src.schemas.availability_schema.availability_dto import AvailabilityResponse
+from src.schemas.availability_schema.availability_dto import AvailabilityDto
 from src.schemas.availability_schema.availability_response import AvailabilityResponseDto
-from src.schemas.blog_schemas.blog_create import BlogCreate
-from src.schemas.blog_schemas.blog_response import BlogResponse
+from src.schemas.availability_schema.avaliability_update import AvailabilityUpdate
 from src.schemas.blog_schemas.blog_update import BlogUpdate
-from src.schemas.user_schema.user_response import UserResponse
 from src.services.image_service import ImageTool
 
 
@@ -45,10 +41,23 @@ class AvailabilityService:
             new_available: Availability = Availability(** available.model_dump(), user_id= user.id,)
 
             self.session.add(new_available)
+            await self.session.flush()
+
+            slots: list[time]= await self.generate_time_slots(new_available.start_time, new_available.end_time)
+
+            for slot in slots:
+                new_appointment = Appointment(
+                    date_get= new_available.date_all,
+                    start_time= slot,
+                    end_time= slot + timedelta(minutes=30),
+                    user_id= user.id,
+                    availability_id= new_available.id
+                )
+                self.session.add(new_appointment)
 
             await self.session.commit()
 
-            logging.info("Disponibilidad cread1!")
+            logging.info("Disponibilidad creado!")
 
             return JSONResponse(
                     content={
@@ -67,18 +76,21 @@ class AvailabilityService:
             if date_start is not None and date_end is not None:
                 sttmt = select(Availability).where(
                     between(Availability.date_all, date_start, date_end)
+                ).options(
+                    joinedload(Availability.appointments)
                 ).where(Availability.user_id == user_id)
             else: 
                 sttmt = select(Availability).where(Availability.user_id == user_id)
            
             availabilities: list[Availability] = (await self.session.exec(sttmt)).all()
 
-            list_availabilities: list[AvailabilityResponse] = [
-                AvailabilityResponse(
+            list_availabilities: list[AvailabilityDto] = [
+                AvailabilityDto(
                     id= avail.id,
                     date_all = avail.date_all,
                     start_time= avail.start_time,
                     end_time= avail.end_time,
+                    disponibility = any(appointment.state == StateAppointment.NULL for appointment in avail.appointments),
                 ).model_dump(mode='json')
                 for avail in availabilities
             ]
@@ -95,11 +107,11 @@ class AvailabilityService:
                 detail="Error al intentar obtener el blog"
             )
         
-    async def get(self, available_get: AvailabilityGet, ):
+    async def get(self, available_get: AvailabilityGet):
         try:
             logging.info("Obteniendo disponibilidad")
             sttmt = select(Availability).options(
-                    joinedload(Availability.appointments)
+                    joinedload(Availability.appointments).order_by(asc(Appointment.start_time))
                 ).where(
                     Availability.id == available_get.id,
                 )
@@ -132,45 +144,96 @@ class AvailabilityService:
                 detail="Error al intentar obtener la disponibilidad"
             )
         
-    async def update(self, blog: BlogUpdate, image: UploadFile | None):
+    async def update(self, available_update: AvailabilityUpdate, user_id: str):
         try:
-            logging.info("Actualizando blog")
-            sttmt = select(Blog).where(
-                    Blog.id == blog.id,
-                )
-           
-            exist_blog: Blog | None = (await self.session.exec(sttmt)).first()
+            logging.info("Actualizando disponibilidad")
+            sttmt = select(Availability).options(
+                    joinedload(Availability.appointments).order_by(asc(Appointment.start_time))
+                ).where(Availability.id == available_update.id)
+            available: Availability | None = (await self.session.exec(sttmt)).first()
             
-            if exist_blog is None:
+            if available is None:
                 return JSONResponse(
-                    content={"detail": "Blog no encontrado"},
+                    content={"detail": "Disponibilidad no encontrada"},
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            exist_blog.title = blog.title
-            exist_blog.body = blog.body
-            exist_blog.categories = blog.categories
-            exist_blog.updated_at = datetime.now(timezone.utc)
+            if available.user_id != user_id:
+                return JSONResponse(
+                    content={"detail": "No tiene permiso para eliminar disponibilidad"},
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+            
+            if available.date_all == date.today():
+                return JSONResponse(
+                    content={"detail": "No se puede modificar la fecha de hoy"},
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # first_turn: Appointment | None = None
 
-            if image is not None:
-                image_tool = ImageTool(os.path.join('src', 'images', 'blog'))
-                file_name = await image_tool.save_image(image)
+            # for appointment in available.appointments:
+            #     if appointment.state != StateAppointment.PENDING or appointment.state != StateAppointment.ACCEPT:
+            #         first_turn = appointment
+            #         break
 
-                if file_name is None:
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Error al intentar editar el blog"
+            # last_turn: Appointment | None = None
+
+            # for appointment in available.appointments[::-1]:
+            #     if appointment.state != StateAppointment.PENDING or appointment.state != StateAppointment.ACCEPT:
+            #         last_turn = appointment
+            #         break
+
+            first_turn = next((appt for appt in available.appointments if appt.state not in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
+            last_turn = next((appt for appt in reversed(available.appointments) if appt.state not in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
+
+            if first_turn is None and last_turn is None:
+                available.start_time = available_update.start_time
+                available.end_time = available_update.end_time
+
+                await self.session.commit()  
+
+                logging.info("Disponibilidad actualizada")
+                return JSONResponse(
+                    content= {'detail': 'Disponibilidad editada con exito!'},
+                    status_code=status.HTTP_200_OK
+                )
+            
+            if available_update.start_time > first_turn.start_time or available.end_time < last_turn.end_time:
+                return JSONResponse(
+                    content={"detail": "No se puede modificar la hora de inicio o fin, revise los turnos pendientes o aceptados"},
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            slots: list[time] = await self.generate_time_slots(available_update.start_time, available_update.end_time)
+
+            for appoint in available.appointments:
+                if appoint.state == StateAppointment.NULL or appoint.state == StateAppointment.CANCEL or appoint.state == StateAppointment.REJECT:
+                    await self.session.delete(appoint)
+
+            # Asegúrate de que los cambios sean reflejados inmediatamente
+            await self.session.flush()  # Esto asegura que los appointments eliminados sean aplicados
+
+            for slot in slots:
+                # if next((appointment for appointment in available.appointments if appointment.start_time == slot), None) is None:
+                if any(appt.start_time == slot for appt in available.appointments):
+                    new_appointment = Appointment(
+                        date_get= available.date_all,
+                        start_time= slot,
+                        end_time= slot + timedelta(minutes=30),
+                        user_id= user_id,
+                        availability_id= available.id
                     )
-                
-                await image_tool.delete_image(exist_blog.url_image)
+                    self.session.add(new_appointment)
 
-                exist_blog.url_image = file_name
+            available.start_time = available_update.start_time
+            available.end_time = available_update.end_time   
 
-            await self.session.commit()
+            await self.session.commit()  
 
-            logging.info("Blog actualizado")
+            logging.info("Disponibilidad actualizada")
             return JSONResponse(
-                content= {'detail': 'Blog editado con exito!'},
+                content= {'detail': 'Disponibilidad editada con exito!'},
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
@@ -181,35 +244,52 @@ class AvailabilityService:
                 detail="Error al intentar obtener el blog"
             )
         
-    async def delete(self, blog_id: str):
+    async def delete(self, available_id: str, user_id: str):
         try:
-            logging.info("Eliminando blog")
-            sttmt = select(Blog).where(Blog.id == blog_id)
-            blog: Blog | None = (await self.session.exec(sttmt)).first()
+            logging.info("Eliminando disponibilidad")
+            # sttmt = select(Availability).where(Availability.id == available_id)
+            # available: Availability | None = (await self.session.exec(sttmt)).first()
+
+            available: Availability | None = await self.session.get(Availability, available_id)
             
-            if blog is None:
+            if available is None:
                 return JSONResponse(
-                    content={"detail": "Blog no encontrado"},
+                    content={"detail": "Disponibilidad no encontrada"},
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            await self.session.delete(blog)
-
-            await ImageTool(os.path.join('src', 'images', 'blog')).delete_image(blog.url_image)
+            if available.user_id != user_id:
+                return JSONResponse(
+                    content={"detail": "No tiene permiso para eliminar disponibilidad"},
+                    status_code=status.HTTP_403_FORBIDDEN
+                )
+            
+            await self.session.delete(available)
 
             await self.session.commit()
 
-            logging.info("Blog eliminado")
+            logging.info("Disponibilidad eliminada")
 
-            return JSONResponse(
-                content= {"detail": "Blog eliminado con exito!"},
-                status_code=status.HTTP_200_OK
-            )
+            return status.HTTP_204_NO_CONTENT
+            # JSONResponse(
+            #     content= {"detail": "Blog eliminado con exito!"},
+            #     status_code=status.HTTP_200_OK
+            # )
         except Exception as e:
-            logging.error(f"Error al eliminar blog: {e}")
+            logging.error(f"Error al eliminar Disponibilidad: {e}")
             await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error al intentar eliminar el blog"
             )
         
+    async def generate_time_slots(self, start_time: time, end_time: time, interval_minutes: int = 30):
+        slots = []
+        current_time = datetime.combine(datetime.today(), start_time)
+        end_time = datetime.combine(datetime.today(), end_time)
+
+        while current_time + timedelta(minutes=interval_minutes) <= end_time:
+            slots.append(current_time.time())
+            current_time += timedelta(minutes=interval_minutes)
+
+        return slots
