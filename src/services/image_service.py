@@ -92,11 +92,15 @@ class ImageTool:
         return image
     
     async def delete_image(self, filename: str) -> None:
-        media_path = os.path.join(self.path_image, filename)
-        if os.path.exists(media_path):
-            os.remove(media_path)
-        else:
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        try:
+            media_path = os.path.join(self.path_image, filename)
+            if os.path.exists(media_path):
+                os.remove(media_path)
+            else:
+                logging.info("Imagen no encontrada, para eliminar")
+        except Exception as e:
+            logging.error(f"Error al eliminar imagen: {e}")
+            
         
     async def get_image(self, file_name: str):
         try:

@@ -1,11 +1,7 @@
 import logging
 import smtplib
-from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-from typing import Optional
 from decouple import config
 
 from src.schemas.user_schema.email_contact import EmailContact

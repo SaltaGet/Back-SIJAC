@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class AppointmentDto(BaseModel):
     id: str
     date_get: date
-    time_get: time
+    start_time: time
 
     class Config:
         from_attributes = True

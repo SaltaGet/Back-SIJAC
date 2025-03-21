@@ -7,3 +7,5 @@ env
 __pycache__
 
 images
+
+credentials.json

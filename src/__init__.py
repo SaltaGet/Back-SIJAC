@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from src.config.init_data import init_data
 from src.config.logging_config import setup_logging
@@ -9,11 +9,12 @@ from src.database.db import db
 import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.triggers.interval import IntervalTrigger
 from src.routers.user_router import user_router
 from src.routers.blog_router import blog_router
-
-# db = DataBase()
+from src.routers.email_router import email_router
+from src.routers.image_router import image_router
+from src.routers.availability_router import availability_router
+from src.routers.appointment_router import appointment_router
 
 setup_logging()
 
@@ -25,6 +26,10 @@ app = FastAPI(title= 'API SIJAC',
 
 app.include_router(router= user_router)
 app.include_router(router= blog_router)
+app.include_router(router= email_router)
+app.include_router(router= image_router)
+app.include_router(router= availability_router)
+app.include_router(router= appointment_router)
 
 origins = [
     '*'
@@ -42,9 +47,8 @@ app.add_middleware(TimingMiddleware)
 
 scheduler = AsyncIOScheduler()
 
-# scheduler.add_job(backup_database, CronTrigger(day_of_week="sun", hour=4, minute=0))
-scheduler.add_job(backup_database, CronTrigger(day_of_week="thu", hour=1, minute=35))
-
+# scheduler.add_job(backup_database, CronTrigger(day_of_week="thu", hour=20, minute=43))
+scheduler.add_job(backup_database, CronTrigger(day_of_week="sun", hour=1, minute=0))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -15,8 +15,8 @@ class StateAppointment(str, Enum):
 class Appointment(SQLModel, table= True):
     __tablename__ = 'appointments'
 
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key= True)
-    date_get: date = Field(index= True)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key= True, index= True)
+    date_get: date = Field()
     start_time: time = Field()
     end_time: time = Field()
     full_name: str | None = Field(max_length=100)

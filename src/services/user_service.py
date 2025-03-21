@@ -1,15 +1,15 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 import logging
 import bcrypt
 from fastapi import HTTPException, status
+from src.config.timezone import get_timezone
 from src.models.refresh_token import HistorialRefreshToken
 from src.models.user_model import RoleUser, User
-from sqlmodel import select, or_
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from src.schemas.user_schema.user_create import UserCreate
 from src.schemas.user_schema.user_credentials import UserCredentials
-# from src.schemas.user_schema.user_update import UserUpdate
 from src.schemas.user_schema.user_update import UserUpdate
 from src.services.auth_service import AuthService
 
@@ -39,7 +39,8 @@ class UserService:
 
             sttmt_rt = token.copy()
             sttmt_rt['user_id'] = user.id
-            sttmt_rt['expire'] = datetime.now(timezone.utc) + timedelta(days=7)
+            sttmt_rt['expire'] = get_timezone() + timedelta(days=7)
+            # sttmt_rt['expire'] = datetime.now(timezone.utc) + timedelta(days=7)
 
             self.session.add(HistorialRefreshToken(**sttmt_rt))
 

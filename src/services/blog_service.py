@@ -1,10 +1,10 @@
 import base64
-from datetime import datetime, timezone
 import logging
 import os
 from typing import List
 import zlib
 from fastapi import HTTPException, Request, status, UploadFile
+from src.config.timezone import get_timezone
 from src.models.blog_model import Blog
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -161,7 +161,8 @@ class BlogService:
             exist_blog.title = blog.title
             exist_blog.body = blog.body
             exist_blog.categories = blog.categories
-            exist_blog.updated_at = datetime.now(timezone.utc)
+            # exist_blog.updated_at = datetime.now(timezone.utc)
+            exist_blog.updated_at = get_timezone()
 
             if image is not None:
                 image_tool = ImageTool(os.path.join('src', 'images', 'blog'))

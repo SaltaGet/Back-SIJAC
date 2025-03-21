@@ -5,6 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 import jwt
 from decouple import config
 from fastapi.security import OAuth2PasswordBearer
+from src.config.timezone import get_timezone
 from src.models.user_model import User
 from src.models.user_model import User
 from src.database.db import db
@@ -24,7 +25,8 @@ class AuthService:
 
     async def create_token(self, user: User, hs: int = 2):
         logging.info("Creando token")
-        expire = datetime.now(timezone.utc) + timedelta(hours=hs)
+        # expire = datetime.now(timezone.utc) + timedelta(hours=hs)
+        expire = get_timezone() + timedelta(hours=hs)
         data = {
             'user_id': user.id,
             'username': user.username,
@@ -39,7 +41,8 @@ class AuthService:
         return encoded_jwt
     
     async def create_refresh_token(self, user: User, days: int = 1):
-        expire = datetime.now(timezone.utc) + timedelta(days=days)
+        # expire = datetime.now(timezone.utc) + timedelta(days=days)
+        expire = get_timezone() + timedelta(days=days)
         data = {
             'expire': expire.isoformat()  # Convert datetime to ISO format string
         }

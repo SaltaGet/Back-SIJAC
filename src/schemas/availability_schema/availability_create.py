@@ -1,5 +1,5 @@
 from datetime import date, time
-from pydantic import BaseModel,field_validator
+from pydantic import BaseModel,field_validator, model_validator
 
 class AvailabilityCreate(BaseModel):
     date_all: date
@@ -12,9 +12,11 @@ class AvailabilityCreate(BaseModel):
             raise ValueError("date_all debe ser posterior al día de hoy")
         return value
     
-    @field_validator("end_time")
-    def validate_time(cls, value, values):
+    @model_validator(mode= 'before')
+    def validate_time(cls, values):
         start_time = values.get("start_time")
-        if start_time and value <= start_time:
+        end_time = values.get("end_time")
+
+        if start_time and end_time <= start_time:
             raise ValueError("end_time debe ser posterior a start_time")
-        return value
+        return values

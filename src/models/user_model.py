@@ -1,9 +1,11 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import List
 from sqlmodel import Relationship, SQLModel, Field
 from sqlalchemy import Column, Enum as SQLAlchemyEnum
 import uuid
+
+from src.config.timezone import get_timezone
 
 class RoleUser(str, Enum):
     USER = "user"
@@ -18,8 +20,10 @@ class User(SQLModel, table=True):
     last_name: str = Field(max_length=100)
     password_hash: str = Field(max_length=100)
     role: str = Field(sa_column=Column(SQLAlchemyEnum(RoleUser)), default=RoleUser.USER)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: get_timezone())
+    updated_at: datetime = Field(default_factory=lambda: get_timezone())
+    # created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     blogs: List["Blog"] = Relationship(back_populates='user')
     availabilities: list["Availability"] = Relationship(back_populates='user')
     appointments: list["Appointment"] = Relationship(back_populates='user')

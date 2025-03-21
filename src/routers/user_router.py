@@ -3,11 +3,9 @@ from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.db import db
 from src.models.user_model import User
-from src.schemas.user_schema.email_contact import EmailContact
 from src.schemas.user_schema.user_create import UserCreate
 from src.schemas.user_schema.user_credentials import UserCredentials
 from src.services.auth_service import AuthService, oauth_scheme
-from src.services.email_service import EmailService
 from src.services.user_service import UserService
 
 user_router = APIRouter(prefix='/users', tags=['User'])

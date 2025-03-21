@@ -1,10 +1,8 @@
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta
 import logging
-import os
-from fastapi import HTTPException, Request, status, UploadFile
+from fastapi import HTTPException, status 
 from src.models.appointment import Appointment, StateAppointment
 from src.models.availability import Availability
-from src.models.blog_model import Blog
 from sqlmodel import asc, between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
@@ -12,12 +10,9 @@ from sqlalchemy.orm import joinedload
 from src.models.user_model import User
 from src.schemas.appointment_schema.appointment_dto import AppointmentDto
 from src.schemas.availability_schema.availability_create import AvailabilityCreate
-from src.schemas.availability_schema.availability_get import AvailabilityGet
 from src.schemas.availability_schema.availability_dto import AvailabilityDto
 from src.schemas.availability_schema.availability_response import AvailabilityResponseDto
 from src.schemas.availability_schema.avaliability_update import AvailabilityUpdate
-from src.schemas.blog_schemas.blog_update import BlogUpdate
-from src.services.image_service import ImageTool
 
 
 class AvailabilityService:
@@ -49,7 +44,7 @@ class AvailabilityService:
                 new_appointment = Appointment(
                     date_get= new_available.date_all,
                     start_time= slot,
-                    end_time= slot + timedelta(minutes=30),
+                    end_time = (datetime.combine(datetime.today(), slot) + timedelta(minutes=30)).time(),
                     user_id= user.id,
                     availability_id= new_available.id
                 )
@@ -80,9 +75,12 @@ class AvailabilityService:
                     joinedload(Availability.appointments)
                 ).where(Availability.user_id == user_id)
             else: 
-                sttmt = select(Availability).where(Availability.user_id == user_id)
+                sttmt = select(Availability
+                            ).options(
+                                joinedload(Availability.appointments)
+                            ).where(Availability.user_id == user_id)
            
-            availabilities: list[Availability] = (await self.session.exec(sttmt)).all()
+            availabilities: list[Availability] = (await self.session.exec(sttmt)).unique().all()
 
             list_availabilities: list[AvailabilityDto] = [
                 AvailabilityDto(
@@ -101,20 +99,21 @@ class AvailabilityService:
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
-            logging.error(f"Error al obtener blogs: {e}")
+            logging.error(f"Error al obtener disponibilidad: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener el blog"
+                detail="Error al intentar obtener la disponibilidad"
             )
         
-    async def get(self, available_get: AvailabilityGet):
+    async def get(self, available_id: str, user_id: str):
         try:
             logging.info("Obteniendo disponibilidad")
             sttmt = select(Availability).options(
-                    joinedload(Availability.appointments).order_by(asc(Appointment.start_time))
+                    joinedload(Availability.appointments)
                 ).where(
-                    Availability.id == available_get.id,
-                )
+                    Availability.id == available_id,
+                ).order_by(Availability.date_all.asc())
+            
             exist_available: Availability | None = (await self.session.exec(sttmt)).first()
 
             if exist_available is None:
@@ -123,18 +122,23 @@ class AvailabilityService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            if exist_available.user_id != available_get.user_id or exist_available.date_all != available_get.date_all:
+            if exist_available.user_id != user_id:
                 return JSONResponse(
                     content={"detail": "Disponibilidad erronea"},
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
             
-            exist_available.appointments = [AppointmentDto.model_validate(appointment).model_dump(mode='json') for appointment in exist_available.appointments]
+            exist_available.appointments.sort(key=lambda appt: appt.start_time)
+            
+            appointments_data = [AppointmentDto.model_validate(appointment).model_dump(mode='json') for appointment in exist_available.appointments]
             
             logging.info("Disponibilidad obtenida")
 
             return JSONResponse(
-                content=AvailabilityResponseDto.model_validate(exist_available).model_dump(mode='json'),
+                content=AvailabilityResponseDto.model_validate({
+                    **exist_available.model_dump(),
+                    "appointments": appointments_data
+                }).model_dump(mode='json'),
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
@@ -144,12 +148,12 @@ class AvailabilityService:
                 detail="Error al intentar obtener la disponibilidad"
             )
         
-    async def update(self, available_update: AvailabilityUpdate, user_id: str):
+    async def update(self, available_id: str, available_update: AvailabilityUpdate, user_id: str):
         try:
             logging.info("Actualizando disponibilidad")
             sttmt = select(Availability).options(
-                    joinedload(Availability.appointments).order_by(asc(Appointment.start_time))
-                ).where(Availability.id == available_update.id)
+                    joinedload(Availability.appointments)
+                ).where(Availability.id == available_id)
             available: Availability | None = (await self.session.exec(sttmt)).first()
             
             if available is None:
@@ -184,8 +188,10 @@ class AvailabilityService:
             #         last_turn = appointment
             #         break
 
-            first_turn = next((appt for appt in available.appointments if appt.state not in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
-            last_turn = next((appt for appt in reversed(available.appointments) if appt.state not in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
+            available.appointments.sort(key=lambda appt: appt.start_time)
+
+            first_turn = next((appt for appt in available.appointments if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
+            last_turn = next((appt for appt in reversed(available.appointments) if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
 
             if first_turn is None and last_turn is None:
                 available.start_time = available_update.start_time
@@ -220,7 +226,7 @@ class AvailabilityService:
                     new_appointment = Appointment(
                         date_get= available.date_all,
                         start_time= slot,
-                        end_time= slot + timedelta(minutes=30),
+                        end_time = (datetime.combine(datetime.today(), slot) + timedelta(minutes=30)).time(),
                         user_id= user_id,
                         availability_id= available.id
                     )
@@ -237,18 +243,20 @@ class AvailabilityService:
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
-            logging.error(f"Error al editar blog: {e}")
+            logging.error(f"Error al editar disponibilidad: {e}")
             await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener el blog"
+                detail="Error al intentar obtener la disponibilidad"
             )
         
     async def delete(self, available_id: str, user_id: str):
         try:
             logging.info("Eliminando disponibilidad")
-            # sttmt = select(Availability).where(Availability.id == available_id)
-            # available: Availability | None = (await self.session.exec(sttmt)).first()
+            sttmt = select(Availability).options(
+                joinedload(Availability.appointments)
+            ).where(Availability.id == available_id)
+            available: Availability | None = (await self.session.exec(sttmt)).first()
 
             available: Availability | None = await self.session.get(Availability, available_id)
             
@@ -264,32 +272,45 @@ class AvailabilityService:
                     status_code=status.HTTP_403_FORBIDDEN
                 )
             
+            for appointment in available.appointments:
+                await self.session.delete(appointment)
+            
             await self.session.delete(available)
 
             await self.session.commit()
 
             logging.info("Disponibilidad eliminada")
 
-            return status.HTTP_204_NO_CONTENT
-            # JSONResponse(
-            #     content= {"detail": "Blog eliminado con exito!"},
-            #     status_code=status.HTTP_200_OK
-            # )
+            JSONResponse(
+                content= {"detail": "Disponibilidad eliminada con exito!"},
+                status_code=status.HTTP_200_OK
+            )
         except Exception as e:
             logging.error(f"Error al eliminar Disponibilidad: {e}")
             await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar eliminar el blog"
+                detail="Error al intentar eliminar disponibilidad"
             )
         
+    # async def generate_time_slots(self, start_time: time, end_time: time, interval_minutes: int = 30):
+    #     slots = []
+    #     current_time = datetime.combine(datetime.today(), start_time)
+    #     end_time = datetime.combine(datetime.today(), end_time)
+
+    #     while current_time + timedelta(minutes=interval_minutes) <= end_time:
+    #         slots.append(current_time.time())
+    #         current_time += timedelta(minutes=interval_minutes)
+
+    #     return slots
+
     async def generate_time_slots(self, start_time: time, end_time: time, interval_minutes: int = 30):
         slots = []
         current_time = datetime.combine(datetime.today(), start_time)
-        end_time = datetime.combine(datetime.today(), end_time)
+        end_datetime = datetime.combine(datetime.today(), end_time)
 
-        while current_time + timedelta(minutes=interval_minutes) <= end_time:
-            slots.append(current_time.time())
-            current_time += timedelta(minutes=interval_minutes)
+        while current_time <= end_datetime:
+            slots.append(current_time.time())  # Guardamos solo la hora (time)
+            current_time += timedelta(minutes=interval_minutes)  # Sumamos correctamente
 
         return slots
