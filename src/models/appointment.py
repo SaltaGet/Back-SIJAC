@@ -24,14 +24,8 @@ class Appointment(SQLModel, table= True):
     cellphone: str | None = Field(max_length=20)
     reason: str | None = Field(max_length=200)
     state: StateAppointment = Field(sa_column=Column(SQLAlchemyEnum(StateAppointment)), default=StateAppointment.NULL)
+    token: str | None = Field(max_length=500, default= None)
     user_id: int = Field(foreign_key="users.id", ondelete= 'CASCADE')
     availability_id: str = Field(foreign_key= 'availabilities.id', ondelete= 'CASCADE')
     user: "User" = Relationship(back_populates='appointments')
     availability: "Availability" = Relationship(back_populates='appointments')
-
-    # @validates("start_time")
-    # def set_end_time(self, key, start_time):
-    #     """ Calcula y almacena end_time basado en start_time """
-    #     dt = datetime.combine(datetime.today(), start_time) + timedelta(minutes=30)
-    #     self.end_time = dt.time()
-    #     return start_time

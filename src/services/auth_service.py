@@ -23,10 +23,10 @@ class AuthService:
             'refresh_token': await self.create_refresh_token(user),
         }
 
-    async def create_token(self, user: User, hs: int = 2):
+    async def create_token(self, user: User, day: int = 1):
         logging.info("Creando token")
         # expire = datetime.now(timezone.utc) + timedelta(hours=hs)
-        expire = get_timezone() + timedelta(hours=hs)
+        expire = get_timezone() + timedelta(days=day)
         data = {
             'user_id': user.id,
             'username': user.username,
@@ -40,7 +40,7 @@ class AuthService:
         logging.info("Token obtenido")
         return encoded_jwt
     
-    async def create_refresh_token(self, user: User, days: int = 1):
+    async def create_refresh_token(self, user: User, days: int = 7):
         # expire = datetime.now(timezone.utc) + timedelta(days=days)
         expire = get_timezone() + timedelta(days=days)
         data = {
@@ -48,13 +48,28 @@ class AuthService:
         }
         encoded_jwt = jwt.encode(data, config('SECRET_KEY'), algorithm="HS256")
         return encoded_jwt
+    
+    async def create_token_appointment(self, id: str, appointment_id: str, user_id: str, min: int = 30):
+        logging.info("Creando token")
+        # expire = datetime.now(timezone.utc) + timedelta(hours=hs)
+        expire = get_timezone() + timedelta(minutes=min)
+        data = {
+            'id': id,
+            'appointment_id': appointment_id,
+            'user_id': user_id,
+            'expire': expire.isoformat()
+        }
+        encoded_jwt = jwt.encode(data, config('SECRET_KEY'), algorithm="HS256")
+        logging.info("Token obtenido")
+        return encoded_jwt
 
     async def decode_token(self, token):
         try:
             logging.info("Decodificando token")
             data = jwt.decode(token, config('SECRET_KEY'), algorithms=["HS256"])
             expire = datetime.fromisoformat(data['expire'])
-            if datetime.now(timezone.utc) >= expire:
+            # if datetime.now(timezone.utc) >= expire:
+            if get_timezone() > expire:
                 return False
             return data
         except jwt.ExpiredSignatureError:
@@ -124,7 +139,8 @@ class AuthService:
                 )
 
             expire = datetime.fromisoformat(data['expire'])
-            if datetime.now(timezone.utc) < expire:
+            # if datetime.now(timezone.utc) < expire:
+            if get_timezone() < expire:
                 return False
 
             user: User | None = await session.get(User, data['user_id'])

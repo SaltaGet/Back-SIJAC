@@ -47,7 +47,7 @@ class AppointmentService:
             exist_appointment.email = appointment_create.email
             exist_appointment.cellphone = appointment_create.cellphone
             exist_appointment.reason = appointment_create.reason
-            exist_appointment.state = StateAppointment.PENDING
+            # exist_appointment.state = StateAppointment.PENDING
 
             await self.session.commit()
 
