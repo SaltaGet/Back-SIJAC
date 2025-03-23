@@ -1,13 +1,18 @@
 from datetime import date, datetime, timedelta
 import logging
+import asyncio
 from fastapi import HTTPException, status
 from src.config.timezone import get_timezone
 from src.models.appointment import Appointment, StateAppointment
 from sqlmodel import between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
+from src.models.user_model import User
 from src.schemas.appointment_schema.appointment_crate import AppointmentCreate
 from src.schemas.appointment_schema.appointment_response import AppointmentResponse
+from src.services.auth_service import AuthService
+from src.services.email_service import EmailService
+import copy
 
 
 class AppointmentService:
@@ -47,10 +52,15 @@ class AppointmentService:
             exist_appointment.email = appointment_create.email
             exist_appointment.cellphone = appointment_create.cellphone
             exist_appointment.reason = appointment_create.reason
-            # exist_appointment.state = StateAppointment.PENDING
+            exist_appointment.state = StateAppointment.RESERVED
+            token, expire = await AuthService().create_token_appointment(exist_appointment.id, exist_appointment.user_id)
+            exist_appointment.token = token
+
+
+            await EmailService().send_email_client(StateAppointment.RESERVED, exist_appointment, None, token)
+            asyncio.create_task(self.delete_reserv(appointment_create.id, expire))
 
             await self.session.commit()
-
             logging.info("Turno asignado")
 
             return JSONResponse(
@@ -116,35 +126,40 @@ class AppointmentService:
                 detail="Error al intentar obtener el turno"
             )
         
-    async def update_state(self, appointment_id: str, user_id: str, new_state: StateAppointment):
+    async def update_state(self, appointment_id: str, user_id: str, new_state: StateAppointment, reason: str = None):
         try:
             logging.info("Obteniendo turno")
             sttmt = select(Appointment).where(Appointment.id == appointment_id).where(Appointment.user_id == user_id)
-            apointment: Appointment | None = (await self.session.exec(sttmt)).first()
+            appointment: Appointment | None = (await self.session.exec(sttmt)).first()
 
-            if apointment is None:
+            if appointment is None:
                 return JSONResponse(
                     content={"detail": "Turno no encontrado"},
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
             # if datetime.combine(apointment.date_get, apointment.start_time) >= datetime.now(timezone.utc) + timedelta(hours=2):
-            if datetime.combine(apointment.date_get, apointment.start_time) <= get_timezone() + timedelta(hours=2):
+            if datetime.combine(appointment.date_get, appointment.start_time) <= get_timezone() + timedelta(hours=2):
                 return JSONResponse(
                     content={"detail": "No es posible cambiar el estado de un turno antes de 2 hrs de su inicio"},
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
+            
+            appointment_copy = copy.copy(appointment)
 
             if new_state not in [StateAppointment.ACCEPT, StateAppointment.REJECT]:
-                apointment.state = StateAppointment.NULL
-                apointment.full_name = None
-                apointment.email = None
-                apointment.cellphone = None
-                apointment.reason = None
+                appointment.state = StateAppointment.NULL
+                appointment.full_name = None
+                appointment.email = None
+                appointment.cellphone = None
+                appointment.reason = None
+                appointment.token = None
             else:
-                apointment.state = new_state
+                appointment.state = new_state
 
             await self.session.commit()
+
+            await EmailService().send_email_client(new_state, appointment_copy, reason)
 
             logging.info("Turno actualizado")
             return JSONResponse(
@@ -159,3 +174,67 @@ class AppointmentService:
                 detail="Error al intentar obtener el Turno"
             )
         
+    async def confirm(self, token: str):
+        try:
+            logging.info("Confirmando turno")
+            data = await AuthService().decode_token(token)
+
+            if data is False:
+                return JSONResponse(
+                    content={"detail": "Token expirado, realice una reserva nuevamente"},
+                    status_code=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            sttmt = select(Appointment).where(Appointment.id == data['appointment_id']
+                ).where(Appointment.user_id == data['user_id']
+                ).where(Appointment.token == token)
+            
+            appointment: Appointment | None = (await self.session.exec(sttmt)).first()
+
+            if appointment is None:
+                return JSONResponse(
+                    content={"detail": "Turno no encontrado"},
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            user: User = await self.session.get(User, appointment.user_id)
+            
+            appointment.state = StateAppointment.PENDING
+
+            await self.session.commit()
+
+            # await EmailService().send_email_lawyer(appointment, user.email)
+            await EmailService().send_email_lawyer(appointment, 'danielmchachagua@gmail.com')
+
+            logging.info("Turno confirmado")
+            return JSONResponse(
+                content= {'detail': 'Turno confirmado con exito!'},
+                status_code=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logging.error(f"Error al confirmar turno: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al intentar confirmar el turno"
+            )
+        
+    async def delete_reserv(self, appointment_id: str, execution_time: datetime):
+        wait_seconds = (execution_time - datetime.now()).total_seconds()
+        if wait_seconds > 0:
+            await asyncio.sleep(wait_seconds)
+        sttmt = select(Appointment).where(Appointment.id == appointment_id
+                                    ).where(Appointment.state == StateAppointment.RESERVED
+                                    ).where(Appointment.token != None)
+        appointment: Appointment | None = (await self.session.exec(sttmt)).first()
+
+        if appointment:
+            appointment.state = StateAppointment.NULL
+            appointment.full_name = None
+            appointment.email = None
+            appointment.cellphone = None
+            appointment.reason = None
+            appointment.token = None 
+            await self.session.commit()
+            logging.info(f"Turno {appointment_id} ha sido cancelado automáticamente.")
+        else:
+            logging.error(f"Error al cancelar Turno {appointment_id}")

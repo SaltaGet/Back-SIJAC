@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from src.schemas.user_schema.user_create import UserCreate
 from src.schemas.user_schema.user_credentials import UserCredentials
+from src.schemas.user_schema.user_response import UserResponse
 from src.schemas.user_schema.user_update import UserUpdate
 from src.services.auth_service import AuthService
 
@@ -144,6 +145,22 @@ class UserService:
                             )
             except Exception as e:
                 raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al editar usuario.')
+            
+    async def get_users(self):
+        try:
+            logging.info("Obteniendo usuarios")
+            statement = select(User).where(User.role == RoleUser.ADMIN)
+            users = await self.session.exec(statement)
+            users = users.all()
+            users = [UserResponse.model_validate(user).model_dump(mode='json') for user in users]
+
+            return JSONResponse(
+                status_code=status.HTTP_200_OK, 
+                content=users
+            )
+        except Exception as e:
+            logging.error(f"Error al obteniendo usuarios: {e}")
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al obtener usuarios.')
             
     async def refresh_token(self, user: User, token: str, refresh_token: str):
         try:

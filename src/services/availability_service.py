@@ -13,6 +13,7 @@ from src.schemas.availability_schema.availability_create import AvailabilityCrea
 from src.schemas.availability_schema.availability_dto import AvailabilityDto
 from src.schemas.availability_schema.availability_response import AvailabilityResponseDto
 from src.schemas.availability_schema.avaliability_update import AvailabilityUpdate
+from src.services.email_service import EmailService
 
 
 class AvailabilityService:
@@ -190,12 +191,27 @@ class AvailabilityService:
 
             available.appointments.sort(key=lambda appt: appt.start_time)
 
-            first_turn = next((appt for appt in available.appointments if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
-            last_turn = next((appt for appt in reversed(available.appointments) if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
+            first_turn: Appointment | None = next((appt for appt in available.appointments if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
+            last_turn: Appointment | None = next((appt for appt in reversed(available.appointments) if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]), None)
 
             if first_turn is None and last_turn is None:
                 available.start_time = available_update.start_time
                 available.end_time = available_update.end_time
+
+                for appointment in available.appointments:
+                    await self.session.delete(appointment)
+
+                slots: list[time]= await self.generate_time_slots(available_update.start_time, available_update.end_time)
+
+                for slot in slots:
+                    new_appointment = Appointment(
+                        date_get= available.date_all,
+                        start_time= slot,
+                        end_time = (datetime.combine(datetime.today(), slot) + timedelta(minutes=30)).time(),
+                        user_id= available.user_id,
+                        availability_id= available.id
+                    )
+                    self.session.add(new_appointment)
 
                 await self.session.commit()  
 
@@ -205,24 +221,31 @@ class AvailabilityService:
                     status_code=status.HTTP_200_OK
                 )
             
-            if available_update.start_time > first_turn.start_time or available.end_time < last_turn.end_time:
+            if available_update.start_time.replace(tzinfo=None) > first_turn.start_time or available_update.end_time.replace(tzinfo=None) < last_turn.end_time:
                 return JSONResponse(
                     content={"detail": "No se puede modificar la hora de inicio o fin, revise los turnos pendientes o aceptados"},
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
             
             slots: list[time] = await self.generate_time_slots(available_update.start_time, available_update.end_time)
+            appointment_save = []
 
             for appoint in available.appointments:
-                if appoint.state == StateAppointment.NULL or appoint.state == StateAppointment.CANCEL or appoint.state == StateAppointment.REJECT:
+                if appoint.state in [StateAppointment.NULL, StateAppointment.CANCEL,StateAppointment.REJECT, StateAppointment.RESERVED]:
+                    if appoint.state == StateAppointment.RESERVED:    
+                        reason = "Se ha modificado la disponibilidad del día, por favor contactarte nuevamente con SIJAC, o enviar un nuevamente desde nuestra web"
+                        await EmailService().send_email_client(StateAppointment.REJECT, appoint, reason)
                     await self.session.delete(appoint)
+                else:
+                    appointment_save.append(appoint.start_time)
 
             # Asegúrate de que los cambios sean reflejados inmediatamente
             await self.session.flush()  # Esto asegura que los appointments eliminados sean aplicados
 
             for slot in slots:
                 # if next((appointment for appointment in available.appointments if appointment.start_time == slot), None) is None:
-                if any(appt.start_time == slot for appt in available.appointments):
+                # if any(appt.start_time == slot for appt in appointment_save):
+                if slot not in appointment_save:
                     new_appointment = Appointment(
                         date_get= available.date_all,
                         start_time= slot,
@@ -233,7 +256,7 @@ class AvailabilityService:
                     self.session.add(new_appointment)
 
             available.start_time = available_update.start_time
-            available.end_time = available_update.end_time   
+            available.end_time = available_update.end_time
 
             await self.session.commit()  
 
@@ -247,7 +270,7 @@ class AvailabilityService:
             await self.session.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error al intentar obtener la disponibilidad"
+                detail="Error al intentar editar la disponibilidad"
             )
         
     async def delete(self, available_id: str, user_id: str):
@@ -273,6 +296,9 @@ class AvailabilityService:
                 )
             
             for appointment in available.appointments:
+                if appointment.state == StateAppointment.PENDING or appointment.state == StateAppointment.ACCEPT:
+                    reason = "Se ha eliminado la disponibilidad del día, por favor contactarte nuevamente con SIJAC, o enviar un nuevamente desde nuestra web"
+                    await EmailService().send_email_client(StateAppointment.REJECT, appointment, reason)
                 await self.session.delete(appointment)
             
             await self.session.delete(available)
@@ -293,23 +319,12 @@ class AvailabilityService:
                 detail="Error al intentar eliminar disponibilidad"
             )
         
-    # async def generate_time_slots(self, start_time: time, end_time: time, interval_minutes: int = 30):
-    #     slots = []
-    #     current_time = datetime.combine(datetime.today(), start_time)
-    #     end_time = datetime.combine(datetime.today(), end_time)
-
-    #     while current_time + timedelta(minutes=interval_minutes) <= end_time:
-    #         slots.append(current_time.time())
-    #         current_time += timedelta(minutes=interval_minutes)
-
-    #     return slots
-
     async def generate_time_slots(self, start_time: time, end_time: time, interval_minutes: int = 30):
         slots = []
         current_time = datetime.combine(datetime.today(), start_time)
         end_datetime = datetime.combine(datetime.today(), end_time)
 
-        while current_time <= end_datetime:
+        while current_time+timedelta(minutes=interval_minutes) <= end_datetime:
             slots.append(current_time.time())  # Guardamos solo la hora (time)
             current_time += timedelta(minutes=interval_minutes)  # Sumamos correctamente
 

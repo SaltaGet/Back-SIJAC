@@ -49,19 +49,18 @@ class AuthService:
         encoded_jwt = jwt.encode(data, config('SECRET_KEY'), algorithm="HS256")
         return encoded_jwt
     
-    async def create_token_appointment(self, id: str, appointment_id: str, user_id: str, min: int = 30):
+    async def create_token_appointment(self, appointment_id: str, user_id: str, min: int = 30):
         logging.info("Creando token")
         # expire = datetime.now(timezone.utc) + timedelta(hours=hs)
         expire = get_timezone() + timedelta(minutes=min)
         data = {
-            'id': id,
             'appointment_id': appointment_id,
             'user_id': user_id,
             'expire': expire.isoformat()
         }
         encoded_jwt = jwt.encode(data, config('SECRET_KEY'), algorithm="HS256")
         logging.info("Token obtenido")
-        return encoded_jwt
+        return encoded_jwt, expire,
 
     async def decode_token(self, token):
         try:

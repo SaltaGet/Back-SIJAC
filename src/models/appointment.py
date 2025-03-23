@@ -11,6 +11,7 @@ class StateAppointment(str, Enum):
     PENDING = "pendiente"
     REJECT = "rechazado"
     NULL = "nulo"
+    RESERVED = "reservado"
 
 class Appointment(SQLModel, table= True):
     __tablename__ = 'appointments'

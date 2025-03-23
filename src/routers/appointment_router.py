@@ -10,7 +10,7 @@ from src.services.appointment_service import AppointmentService
 from src.services.auth_service import AuthService
 
 
-appointment_router = APIRouter(prefix='/apponintment', tags=['Appointment'])
+appointment_router = APIRouter(prefix='/appointment', tags=['Appointment'])
 
 auth = AuthService()
 
@@ -46,10 +46,13 @@ async def get(
 async def update(
     appointment_id: str,
     new_state: StateAppointment = Query(...),
+    reason: str = Query(None),
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await AppointmentService(session).update_state(appointment_id, user.id, new_state)
+    if new_state == StateAppointment.REJECT and not reason:
+        raise ValueError("Debe indicar el motivo del rechazo")
+    return await AppointmentService(session).update_state(appointment_id, user.id, new_state, reason)
 
 @appointment_router.put('/create', status_code= status.HTTP_200_OK)
 async def create(
@@ -58,4 +61,11 @@ async def create(
 ):
     return await AppointmentService(session).create(appointment_create)
 
+############################### POST ###############################
 
+@appointment_router.post('/confirm', status_code= status.HTTP_200_OK)
+async def confirm(
+    token: str = Query(...),
+    session: AsyncSession = Depends(db.get_session),
+):
+    return await AppointmentService(session).confirm(token)

@@ -32,9 +32,9 @@ class EmailService:
             except smtplib.SMTPException as e:
                 logging.error(f"Error sending email: {e}")
 
-    async def send_email_client(self, state: StateAppointment, appointment: Appointment):  
+    async def send_email_client(self, state: StateAppointment, appointment: Appointment, reason: str = None, token: str = None):  
         try:
-            if state == StateAppointment.NULL:
+            if state == StateAppointment.RESERVED:
                 html = f"""
                     <html>
                     <head>
@@ -49,6 +49,7 @@ class EmailService:
                         <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{appointment.reason}"</p>
                         <p style="text-align: center;">A partir del mensaje recibido tiene 30 minutos para confirmar la solicitud del turno</p>
                         <a href="https://www.facebook.com" target="_blank">
+                            token: {token}
                             <button>Confirmar solicitud</button>
                         </a>
                         <h2 style="text-align: center;">Gracias por contacarte con SIJAC!!!</h2>
@@ -87,12 +88,6 @@ class EmailService:
                         <p>dia: {appointment.date_get.strftime('%d-%m-%Y')}</p>
                         <p>Inicio: {appointment.start_time.strftime('%H-%M')}</p>
                         <p>Inicio: {appointment.end_time.strftime('%H-%M')}</p>
-                        <p>Por el siguiente motivo:</p>
-                        <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{appointment.reason}"</p>
-                        <p style="text-align: center;">Para confirmar la solicitud del turno es necesario hacer click en el siguiente botón</p>
-                        <a href="https://www.facebook.com" target="_blank">
-                            <button>Confirmar solicitud</button>
-                        </a>
                         <h2 style="text-align: center;">Gracias por contacarte con SIJAC!!!</h2>
                     </body>
                     </html>
@@ -112,7 +107,7 @@ class EmailService:
                         <p>Inicio: {appointment.start_time.strftime('%H-%M')}</p>
                         <p>Inicio: {appointment.end_time.strftime('%H-%M')}</p>
                         <p>Por el siguiente motivo:</p>
-                        <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{appointment.reason}"</p>
+                        <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{reason}"</p>
                         <h2 style="text-align: center;">Gracias por contacarte con SIJAC!!!</h2>
                     </body>
                     </html>
@@ -125,7 +120,7 @@ class EmailService:
             logging.error(f"Error al enviar email")
             return False
 
-    async def send_email_lawyer(self, appointment: Appointment):   
+    async def send_email_lawyer(self, appointment: Appointment, email_lawyer: str):   
         try:
             html = f"""
                 <html>
@@ -144,7 +139,7 @@ class EmailService:
                 </html>
             """
 
-            await self.send_email(subject='Nuevo turno SIJAC', to_email='danielmchachagua@gmail.com', html_message=html)
+            await self.send_email(subject='Nuevo turno SIJAC', to_email=email_lawyer, html_message=html)
 
             return True
         except Exception as e:

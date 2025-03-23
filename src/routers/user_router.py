@@ -67,5 +67,11 @@ async def validate_email(
 ):
     return await UserService(session).validate_email(email)
 
+@user_router.get('/get_users') 
+async def get_users( 
+    session: AsyncSession = Depends(db.get_session),
+): 
+    return await UserService(session).get_users()
+
 # ############################### PUT ###############################update_user
 
