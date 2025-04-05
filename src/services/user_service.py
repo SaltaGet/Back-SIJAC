@@ -149,7 +149,7 @@ class UserService:
     async def get_users(self):
         try:
             logging.info("Obteniendo usuarios")
-            statement = select(User).where(User.role == RoleUser.ADMIN)
+            statement = select(User).where(User.role == RoleUser.USER)
             users = await self.session.exec(statement)
             users = users.all()
             users = [UserResponse.model_validate(user).model_dump(mode='json') for user in users]
