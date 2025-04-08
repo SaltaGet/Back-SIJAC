@@ -219,7 +219,7 @@ class AppointmentService:
             )
         
     async def delete_reserv(self, appointment_id: str, execution_time: datetime):
-        wait_seconds = (execution_time - datetime.now()).total_seconds()
+        wait_seconds = (execution_time - get_timezone()).total_seconds()
         if wait_seconds > 0:
             await asyncio.sleep(wait_seconds)
         sttmt = select(Appointment).where(Appointment.id == appointment_id
