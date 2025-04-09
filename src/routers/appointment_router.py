@@ -16,11 +16,11 @@ auth = AuthService()
 
 ############################### GET ###############################
 
-@appointment_router.get('/get_all/{user_id}')
+@appointment_router.get('/get_all')
 async def get_all(
-    user_id: str,
     date_start: date | None = Query(None),
     date_end: date | None = Query(None),
+    user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
     today = date.today()
@@ -30,7 +30,7 @@ async def get_all(
     
     if date_end and date_end < today + timedelta(days=1):
         raise ValueError("date_end debe ser igual o mayor a mañana.")
-    return await AppointmentService(session).get_all(user_id, date_start, date_end)
+    return await AppointmentService(session).get_all(user.id, date_start, date_end)
 
 @appointment_router.get('/get/{appointment_id}')
 async def get(
