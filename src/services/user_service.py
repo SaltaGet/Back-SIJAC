@@ -136,6 +136,7 @@ class UserService:
                 user_exist.username = user_update.username 
                 user_exist.first_name = user_update.first_name 
                 user_exist.last_name = user_update.last_name
+                user_exist.specialty = user_update.specialty
 
                 await self.session.commit()
 

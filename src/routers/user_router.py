@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, Form, status
 from fastapi.responses import JSONResponse
+from sqlmodel import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.db import db
+from src.models.appointment import Appointment
+from src.models.availability import Availability
+from src.models.blog_model import Blog
 from src.models.user_model import User
 from src.schemas.user_schema.user_create import UserCreate
 from src.schemas.user_schema.user_credentials import UserCredentials
@@ -75,3 +79,15 @@ async def get_users(
 
 # ############################### PUT ###############################update_user
 
+@user_router.delete('/reset_tables')
+async def reset_tables(
+    session: AsyncSession = Depends(db.get_session),
+):  
+    await session.exec(text("DELETE FROM appointments;"))
+    await session.exec(text("DELETE FROM availabilities;"))
+    await session.exec(text("DELETE FROM blogs;"))
+    await session.commit()
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"detail": "Tablas reiniciadas"}
+    )

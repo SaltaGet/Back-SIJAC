@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     password_hash: str
     first_name: str
     last_name: str
+    specialty: str
 
     @classmethod
     def hash_password(cls, password: str) -> str:
