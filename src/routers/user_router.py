@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, Form, status
+import logging
+import traceback
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, logger, status
 from fastapi.responses import JSONResponse
 from sqlmodel import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.db import db
-from src.models.appointment import Appointment
-from src.models.availability import Availability
-from src.models.blog_model import Blog
 from src.models.user_model import User
 from src.schemas.user_schema.user_create import UserCreate
 from src.schemas.user_schema.user_credentials import UserCredentials
@@ -18,12 +17,60 @@ auth = AuthService()
 
 ############################### POST ###############################
 
+# @user_router.post('/create')
+# async def create_user(
+#     image: UploadFile = File(...),
+#     user: UserCreate,
+#     session: AsyncSession = Depends(db.get_session),
+# ):
+#     return await UserService(session).create_user(user)
+
 @user_router.post('/create')
 async def create_user(
-    user: UserCreate,
+    username: str = Form(...),
+    email: str = Form(...),
+    password_hash: str = Form(...),
+    first_name: str = Form(...),
+    last_name: str = Form(...),
+    specialty: str = Form(...),
+    image: UploadFile = File(...),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await UserService(session).create_user(user)
+    try:
+        user_data = {
+            "username": username,
+            "email": email,
+            "password_hash": password_hash,
+            "first_name": first_name,
+            "last_name": last_name,
+            "specialty": specialty
+        }
+
+        logging.info(f"Intentando crear usuario con datos: {user_data}")
+
+        try:
+            user = UserCreate(**user_data)
+        except ValueError as e:
+            logging.error(f"Error de validación: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(e)
+            )
+        except Exception as e:
+            logging.error(f"Error inesperado al validar: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Error en los datos del usuario: {str(e)}"
+            )
+        return await UserService(session).create_user(user, image)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error inesperado: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocurrió un error inesperado. Por favor revise los logs."
+        )
 
 @user_router.post('/login')
 async def login(
@@ -59,9 +106,14 @@ async def refresh_token(
 
 @user_router.get('/me') 
 async def user( 
+    request: Request,
     user: User = Depends(auth.get_current_user), 
 ): 
     user_data = user
+    scheme = request.scope.get("scheme") 
+    host = request.headers.get("host")   
+    full_url = f"{scheme}://{host}/image/get_image_user/"
+    user_data.url_image= full_url + user_data.url_image
     return user_data
 
 @user_router.get('/validate_email')
@@ -73,9 +125,10 @@ async def validate_email(
 
 @user_router.get('/get_users') 
 async def get_users( 
+    request: Request,
     session: AsyncSession = Depends(db.get_session),
 ): 
-    return await UserService(session).get_users()
+    return await UserService(session).get_users(request)
 
 # ############################### PUT ###############################update_user
 

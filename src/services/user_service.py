@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 import logging
+import os
 import bcrypt
-from fastapi import HTTPException, status
+from fastapi import HTTPException, Request, UploadFile, status
 from src.config.timezone import get_timezone
 from src.models.refresh_token import HistorialRefreshToken
 from src.models.user_model import RoleUser, User
@@ -13,6 +14,7 @@ from src.schemas.user_schema.user_credentials import UserCredentials
 from src.schemas.user_schema.user_response import UserResponse
 from src.schemas.user_schema.user_update import UserUpdate
 from src.services.auth_service import AuthService
+from src.services.image_service import ImageTool
 
 class UserService:
     def __init__(self, session: AsyncSession):
@@ -41,7 +43,6 @@ class UserService:
             sttmt_rt = token.copy()
             sttmt_rt['user_id'] = user.id
             sttmt_rt['expire'] = get_timezone() + timedelta(days=7)
-            # sttmt_rt['expire'] = datetime.now(timezone.utc) + timedelta(days=7)
 
             self.session.add(HistorialRefreshToken(**sttmt_rt))
 
@@ -85,7 +86,7 @@ class UserService:
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar logout")
 
     
-    async def create_user(self, user: UserCreate, is_admin: bool = False):
+    async def create_user(self, user: UserCreate, image: UploadFile, is_admin: bool = False):
             try:
                 logging.info("Creando usuario")
                 statement= select(User).where(User.email == user.email)
@@ -104,8 +105,18 @@ class UserService:
                             status_code=status.HTTP_409_CONFLICT, 
                             content={"detail": "El email ya existe."}
                             )
+                 
+                new_image = await ImageTool(os.path.join('src', 'images', 'user')).save_image(image)
 
-                new_user: User = User(**user.model_dump())
+                if new_image is None:
+                    return JSONResponse(
+                        content={
+                            "detail": "Error al guardar la imagen"
+                            },
+                        status_code=status.HTTP_424_FAILED_DEPENDENCY
+                    )
+            
+                new_user: User = User(**user.model_dump(), url_image= new_image)
 
                 if is_admin == True:
                     new_user.role = RoleUser.ADMIN
@@ -121,9 +132,12 @@ class UserService:
                             )
             except Exception as e:
                 logging.error(f"Error al crear usuario: {e}")
+                if new_image:
+                    ImageTool(os.path.join('src', 'images', 'user')).delete_image(new_image)
+                await self.session.rollback()
                 raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al crear usuario.')
             
-    async def update_user(self, user_update: UserUpdate, user: User):
+    async def update_user(self, user_update: UserUpdate, user: User, image: UploadFile | None):
             try:
                 user_exist: User | None = await self.session.get(User, user.id)
                 
@@ -138,6 +152,20 @@ class UserService:
                 user_exist.last_name = user_update.last_name
                 user_exist.specialty = user_update.specialty
 
+                if image is not None:
+                    image_tool = ImageTool(os.path.join('src', 'images', 'user'))
+                    file_name = await image_tool.save_image(image)
+
+                    if file_name is None:
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Error al intentar editar el usuario"
+                        )
+                    
+                    await image_tool.delete_image(user_exist.url_image)
+
+                    user_exist.url_image = file_name
+
                 await self.session.commit()
 
                 return JSONResponse(
@@ -147,17 +175,26 @@ class UserService:
             except Exception as e:
                 raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al editar usuario.')
             
-    async def get_users(self):
+    async def get_users(self, request: Request):
         try:
             logging.info("Obteniendo usuarios")
             statement = select(User).where(User.role == RoleUser.USER)
             users = await self.session.exec(statement)
             users = users.all()
-            users = [UserResponse.model_validate(user).model_dump(mode='json') for user in users]
+
+            scheme = request.scope.get("scheme") 
+            host = request.headers.get("host")   
+            full_url = f"{scheme}://{host}/image/get_image_user/"
+
+            users_list = []
+            for user in users:
+                user.url_image = full_url + user.url_image
+                u = UserResponse.model_validate(user).model_dump(mode='json')
+                users_list.append(u)
 
             return JSONResponse(
                 status_code=status.HTTP_200_OK, 
-                content=users
+                content=users_list
             )
         except Exception as e:
             logging.error(f"Error al obteniendo usuarios: {e}")

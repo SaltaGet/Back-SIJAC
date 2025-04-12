@@ -203,8 +203,8 @@ class AppointmentService:
 
             await self.session.commit()
 
-            # await EmailService().send_email_lawyer(appointment, user.email)
-            await EmailService().send_email_lawyer(appointment, 'danielmchachagua@gmail.com')
+            await EmailService().send_email_lawyer(appointment, user.email)
+            # await EmailService().send_email_lawyer(appointment, 'danielmchachagua@gmail.com')
 
             logging.info("Turno confirmado")
             return JSONResponse(

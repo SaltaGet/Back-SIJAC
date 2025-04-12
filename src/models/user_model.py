@@ -21,6 +21,7 @@ class User(SQLModel, table=True):
     password_hash: str = Field(max_length=100)
     role: str = Field(sa_column=Column(SQLAlchemyEnum(RoleUser)), default=RoleUser.USER)
     specialty: str = Field(max_length=100)
+    url_image: str = Field()
     created_at: datetime = Field(default_factory=lambda: get_timezone())
     updated_at: datetime = Field(default_factory=lambda: get_timezone())
     blogs: List["Blog"] = Relationship(back_populates='user')

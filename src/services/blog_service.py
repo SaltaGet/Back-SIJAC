@@ -72,7 +72,7 @@ class BlogService:
             
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/blog/get_image/"
+            full_url = f"{scheme}://{host}/image/get_image_blog/"
             
             list_blogs: List[BlogResponse] = [
                 BlogResponse(
@@ -119,7 +119,7 @@ class BlogService:
 
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/blog/get_image/"
+            full_url = f"{scheme}://{host}/image/get_image_blog/"
             blog.url_image = full_url+blog.url_image
             
             if blog is None:
@@ -161,7 +161,6 @@ class BlogService:
             exist_blog.title = blog.title
             exist_blog.body = blog.body
             exist_blog.categories = blog.categories
-            # exist_blog.updated_at = datetime.now(timezone.utc)
             exist_blog.updated_at = get_timezone()
 
             if image is not None:
