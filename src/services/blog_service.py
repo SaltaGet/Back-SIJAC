@@ -77,19 +77,13 @@ class BlogService:
             host = request.headers.get("host")   
             full_url = f"{scheme}://{host}/image/get_image_blog/"
             
-            list_blogs: List[BlogResponse] = [
-                BlogResponse(
-                    id=blog.id,
-                    title=blog.title,
-                    body=blog.body,
-                    categories=blog.categories,
-                    url_image=full_url + blog.url_image,
-                    created_at=blog.created_at.isoformat(),
-                    updated_at=blog.updated_at.isoformat(),
-                    user=UserResponse.model_validate(blog.user)
-                ).model_dump(mode='json')
-                for blog in blogs
-            ]
+            list_blogs: List[BlogResponse] = []
+
+            for blog in blogs:
+                blog.url_image = full_url + blog.url_image
+                blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
+                blog.user= UserResponse.model_validate(blog.user)
+                list_blogs.append(BlogResponse.model_validate(blog).model_dump(mode='json'))
             
             logging.info("Blogs obtenidos correctamente")
             
@@ -132,12 +126,15 @@ class BlogService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            blog.user= UserResponse.model_validate(blog.user)
+            # blog.user= UserResponse.model_validate(blog.user).model_dump(mode='json')
+            user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
+            blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
+            blog_data['user'] = user_data
 
             logging.info("Blog obtenido")
 
             return JSONResponse(
-                content=BlogResponse.model_validate(blog).model_dump(mode='json'),
+                content=blog_data,
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
