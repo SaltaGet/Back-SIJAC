@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+from fastapi.middleware import Middleware
 from src.config.init_data import init_data
 from src.config.logging_config import setup_logging
 from src.config.scheduler_task import backup_database
+from src.middleware.rate_limit import RateLimitMiddleware
 from src.middleware.timing import TimingMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from src.database.db import db
@@ -24,6 +27,9 @@ app = FastAPI(title= 'API SIJAC',
             docs_url='/',
             )
 
+app.state.rate_limit_ips = {}
+
+
 app.include_router(router= user_router)
 app.include_router(router= blog_router)
 app.include_router(router= email_router)
@@ -44,6 +50,7 @@ app.add_middleware(
 )
 
 app.add_middleware(TimingMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 scheduler = AsyncIOScheduler()
 
