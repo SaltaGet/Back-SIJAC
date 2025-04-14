@@ -121,7 +121,7 @@ class BlogService:
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
             full_url = f"{scheme}://{host}/image/get_image_blog/"
-            blog.url_image = full_url+blog.url_image
+            blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
             
             if blog is None:
                 return JSONResponse(
