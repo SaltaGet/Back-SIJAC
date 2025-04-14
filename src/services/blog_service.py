@@ -6,7 +6,7 @@ import zlib
 from fastapi import HTTPException, Request, status, UploadFile
 from src.config.timezone import get_timezone
 from src.models.blog_model import Blog
-from sqlmodel import select
+from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
@@ -68,7 +68,10 @@ class BlogService:
                 .offset(offset)
             )
             
-            blogs: List[Blog] = (await self.session.execute(sttmt)).scalars().all()
+            blogs: List[Blog] = (await self.session.exec(sttmt)).unique().all()
+
+            sttmt_total = select(func.count(Blog.id))
+            total_blogs = (await self.session.exec(sttmt_total)).first()
             
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
@@ -95,7 +98,8 @@ class BlogService:
                     "page": page,
                     "per_page": per_page,
                     "total": len(blogs),
-                    "blogs": list_blogs
+                    "total_pages": (total_blogs // per_page) + 1 if total_blogs > 0 else 0,
+                    "data": list_blogs
                 },
                 status_code=200
             )
@@ -128,7 +132,7 @@ class BlogService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            UserResponse.model_validate(blog.user)
+            blog.user= UserResponse.model_validate(blog.user)
 
             logging.info("Blog obtenido")
 
