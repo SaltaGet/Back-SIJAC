@@ -80,8 +80,9 @@ class BlogService:
             list_blogs: List[BlogResponse] = []
 
             for blog in blogs:
-                blog.url_image = full_url + blog.url_image
-                blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
+                blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
+                if not blog.user.url_image.startswith("http"):
+                    blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
                 user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
                 blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
                 blog_data['user'] = user_data
