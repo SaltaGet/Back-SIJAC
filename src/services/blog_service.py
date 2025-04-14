@@ -82,8 +82,10 @@ class BlogService:
             for blog in blogs:
                 blog.url_image = full_url + blog.url_image
                 blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
-                blog.user= UserResponse.model_validate(blog.user)
-                list_blogs.append(BlogResponse.model_validate(blog).model_dump(mode='json'))
+                user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
+                blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
+                blog_data['user'] = user_data
+                list_blogs.append(blog_data)
             
             logging.info("Blogs obtenidos correctamente")
             
