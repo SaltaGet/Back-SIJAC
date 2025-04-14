@@ -129,7 +129,8 @@ class BlogService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
+            if not blog.user.url_image.startswith("http"):
+                blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
             user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
             blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
             blog_data['user'] = user_data
