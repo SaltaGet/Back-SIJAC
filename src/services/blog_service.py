@@ -79,6 +79,8 @@ class BlogService:
             
             list_blogs: List[BlogResponse] = []
 
+            blogs = sorted(blogs, key=lambda blog: blog.created_at, reverse=True)
+            
             for blog in blogs:
                 blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
                 if not blog.user.url_image.startswith("http"):
@@ -87,8 +89,6 @@ class BlogService:
                 blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
                 blog_data['user'] = user_data
                 list_blogs.append(blog_data)
-
-            blogs = sorted(blogs, key=lambda blog: blog.created_at, reverse=True)
             
             logging.info("Blogs obtenidos correctamente")
             
