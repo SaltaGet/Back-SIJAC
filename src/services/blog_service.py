@@ -6,7 +6,7 @@ import zlib
 from fastapi import HTTPException, Request, status, UploadFile
 from src.config.timezone import get_timezone
 from src.models.blog_model import Blog
-from sqlmodel import func, select
+from sqlmodel import desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
@@ -64,6 +64,7 @@ class BlogService:
             sttmt = (
                 select(Blog)
                 .options(joinedload(Blog.user))
+                .order_by(desc(Blog.created_at))
                 .limit(per_page)
                 .offset(offset)
             )
@@ -79,8 +80,6 @@ class BlogService:
             
             list_blogs: List[BlogResponse] = []
 
-            blogs = sorted(blogs, key=lambda blog: blog.created_at, reverse=True)
-            
             for blog in blogs:
                 blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
                 if not blog.user.url_image.startswith("http"):
