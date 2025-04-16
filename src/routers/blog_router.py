@@ -59,6 +59,13 @@ async def get(
 ):
     return await BlogService(session).get(request, blog_id)
 
+@blog_router.get('/get_last_blogs')
+async def get_last_blogs(
+    request: Request,
+    session: AsyncSession = Depends(db.get_session),
+):
+    return await BlogService(session).get_last_blogs(request)
+
 ############################### PUT ###############################
 
 @blog_router.put('/update/{blog_id}', status_code= status.HTTP_200_OK)

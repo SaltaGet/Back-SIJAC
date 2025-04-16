@@ -230,6 +230,52 @@ class BlogService:
                 detail="Error al intentar eliminar el blog"
             )
         
+    async def get_last_blogs(self, request: Request):
+        try:
+            logging.info("Obteniendo blogs paginados")
+            sttmt = (
+                select(Blog)
+                .options(joinedload(Blog.user))
+                .order_by(desc(Blog.created_at))
+                .limit(3)
+                .offset(0)
+                )
+            
+            blogs: List[Blog] = (await self.session.exec(sttmt)).unique().all()
+
+            sttmt_total = select(func.count(Blog.id))
+            total_blogs = (await self.session.exec(sttmt_total)).first()
+            
+            scheme = request.scope.get("scheme") 
+            host = request.headers.get("host")   
+            full_url = f"{scheme}://{host}/image/get_image_blog/"
+            
+            list_blogs: List[BlogResponse] = []
+
+            for blog in blogs:
+                blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
+                if not blog.user.url_image.startswith("http"):
+                    blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
+                user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
+                blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
+                blog_data['user'] = user_data
+                list_blogs.append(blog_data)
+            
+            logging.info("Blogs obtenidos correctamente")
+            
+            return JSONResponse(
+                content={
+                    "data": list_blogs
+                },
+                status_code=200
+            )
+        except Exception as e:
+            logging.error(f"Error al obtener blogs: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Error al intentar obtener los blogs"
+            )
+        
     async def compress_string(self, data):
         compressed = zlib.compress(data.encode('utf-8'))
         return base64.b64encode(compressed).decode('utf-8')
