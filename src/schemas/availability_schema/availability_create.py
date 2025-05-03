@@ -33,7 +33,7 @@ class AvailabilityCreate(BaseModel):
                 raise ValueError("start_time_optional debe ser mayor a end_time")
             if start_time_optional >= end_time_optional:
                 raise ValueError("end_time_optional debe ser posterior a start_time_optional")
-            if start_time_optional <= start_time or end_time_optional >= end_time:
-                raise ValueError("start_time_optional y end_time_optional deben estar dentro del rango de start_time y end_time")
+            # if start_time_optional <= start_time or end_time_optional >= end_time:
+            #     raise ValueError("start_time_optional y end_time_optional deben estar dentro del rango de start_time y end_time")
 
         return values
