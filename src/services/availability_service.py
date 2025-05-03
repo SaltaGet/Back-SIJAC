@@ -162,6 +162,8 @@ class AvailabilityService:
                     date_all = avail.date_all,
                     start_time= avail.start_time,
                     end_time= avail.end_time,
+                    start_time_optional= avail.start_time_optional,
+                    end_time_optional= avail.end_time_optional,
                     disponibility = any(appointment.state == StateAppointment.NULL for appointment in avail.appointments),
                 ).model_dump(mode='json')
                 for avail in availabilities
