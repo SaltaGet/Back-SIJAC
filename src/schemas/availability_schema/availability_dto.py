@@ -6,6 +6,8 @@ class AvailabilityDto(BaseModel):
     date_all: date
     start_time: time
     end_time: time
+    start_time_optional: time | None
+    end_time_optional: time | None
     disponibility: bool
 
     class Config:
