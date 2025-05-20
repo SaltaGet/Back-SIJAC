@@ -14,3 +14,9 @@ class CaseResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     users: list[UserResponse] = []
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat() if isinstance(v, datetime) else v,
+        }

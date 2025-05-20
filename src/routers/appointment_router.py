@@ -61,6 +61,14 @@ async def create(
 ):
     return await AppointmentService(session).create(appointment_create)
 
+@appointment_router.put('/create_by_user', status_code= status.HTTP_200_OK)
+async def create_by_user(
+    appointment_create: AppointmentCreate,
+    user: User = Depends(auth.get_current_user),
+    session: AsyncSession = Depends(db.get_session),
+):
+    return await AppointmentService(session).create_by_user(appointment_create, user.id)
+
 ############################### POST ###############################
 
 @appointment_router.post('/confirm', status_code= status.HTTP_200_OK)

@@ -36,6 +36,10 @@ class DataBase:
             from src.models.refresh_token import HistorialRefreshToken
             from src.models.availability import Availability
             from src.models.appointment import Appointment
+            from src.models.client import Client
+            from src.models.case import Case
+            from src.models.user_case import UserCase
+            from src.models.audit import Audit
 
             async with self.engine.begin() as conn:
                 await conn.run_sync(SQLModel.metadata.create_all)

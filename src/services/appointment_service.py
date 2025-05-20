@@ -4,7 +4,7 @@ import asyncio
 from fastapi import HTTPException, status
 from src.config.timezone import get_timezone
 from src.models.appointment import Appointment, StateAppointment
-from sqlmodel import between, select
+from sqlmodel import between, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from src.models.user_model import User
@@ -59,6 +59,56 @@ class AppointmentService:
 
             await EmailService().send_email_client(StateAppointment.RESERVED, exist_appointment, None, token)
             asyncio.create_task(self.delete_reserv(appointment_create.id, expire))
+
+            await self.session.commit()
+            logging.info("Turno asignado")
+
+            return JSONResponse(
+                    content={
+                        "detail": "turno asignado con exito!"
+                        },
+                    status_code=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logging.error(f"Error al crear turno: {e}")
+            await self.session.rollback()
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar crear el turno")
+    
+    async def create_by_user(self, appointment_create: AppointmentCreate, user_id: str):
+        try:
+            logging.info("Creando turno")
+            sttmt = select(Appointment).where(Appointment.user_id == user_id).where(Appointment.id == appointment_create.id)
+            exist_appointment: Appointment | None = (await self.session.exec(sttmt)).first()
+
+            if exist_appointment is None:
+                return JSONResponse(
+                    content={
+                        "detail": "Turno no encontrado"
+                        },
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            if exist_appointment.state != StateAppointment.NULL:
+                return JSONResponse(
+                    content={
+                        "detail": "El turno ya fue asignado"
+                        },
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if exist_appointment.date_get < date.today():
+                return JSONResponse(
+                    content={
+                        "detail": "La fecha no puede ser anterior al día de hoy"
+                        },
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+            
+            exist_appointment.full_name = appointment_create.full_name
+            exist_appointment.email = appointment_create.email
+            exist_appointment.cellphone = appointment_create.cellphone
+            exist_appointment.reason = appointment_create.reason
+            exist_appointment.state = StateAppointment.ACCEPT
 
             await self.session.commit()
             logging.info("Turno asignado")

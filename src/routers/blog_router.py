@@ -66,6 +66,15 @@ async def get_last_blogs(
 ):
     return await BlogService(session).get_last_blogs(request)
 
+@blog_router.get('/get_favorites')
+async def get_favorites(
+    request: Request,
+    page: int = Query(1, alias="page", ge=1),
+    per_page: int = Query(9, alias="per_page", ge=1, le=50),
+    session: AsyncSession = Depends(db.get_session),
+):
+    return await BlogService(session).get_favorites(request, page, per_page)
+
 ############################### PUT ###############################
 
 @blog_router.put('/update/{blog_id}', status_code= status.HTTP_200_OK)

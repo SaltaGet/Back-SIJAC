@@ -42,7 +42,7 @@ class CaseService:
             self.session.add(UserCase(
                 user_id= user_id,
                 case_id= new_case.id,
-                permisiion= TypePermision.PRINCIPAL,
+                permision= TypePermision.PRINCIPAL,
             ))
 
             await self.session.commit()
@@ -83,7 +83,7 @@ class CaseService:
                         id= case.client.id,
                         first_name= case.client.first_name,
                         last_name= case.client.last_name
-                        ).model_dump(mode='json'),
+                        ),
                     created_at= case.created_at,
                     updated_at= case.updated_at,
                 ).model_dump(mode='json')
@@ -152,11 +152,25 @@ class CaseService:
                 .join(UserCase, UserCase.case_id == Case.id)
                 .where(Case.client_id == client_id)
                 .where(UserCase.user_id == user_id)
+                .options(
+                    joinedload(Case.client)
+                )
             )
             cases: list[Case] = (await self.session.exec(sttmt)).all()
 
             list_cases: list[CaseResponseDTO] = [
-                ClientResponse.model_validate(case).model_dump(mode='json')
+                CaseResponseDTO(
+                    id=case.id,
+                    detail=case.detail,
+                    state=case.state,
+                    client=ClientResponseDTO(
+                        id=case.client.id if case.client else None,
+                        first_name=case.client.first_name if case.client else None,
+                        last_name=case.client.last_name if case.client else None
+                    ),
+                    created_at=case.created_at,
+                    updated_at=case.updated_at,
+                ).model_dump(mode='json')
                 for case in cases
             ]
 
@@ -175,17 +189,31 @@ class CaseService:
         
     async def get_by_state(self, state: StateCase, user_id: str):
         try:
-            logging.info("Obteniendo clientes")
+            logging.info("Obteniendo casos")
             sttmt = (
                 select(Case)
                 .join(UserCase, UserCase.case_id == Case.id)
                 .where(Case.state == state)
                 .where(UserCase.user_id == user_id)
+                .options(
+                    joinedload(Case.client)
+                )
             )
             cases: list[Case] = (await self.session.exec(sttmt)).all()
 
             list_cases: list[CaseResponseDTO] = [
-                ClientResponse.model_validate(case).model_dump(mode='json')
+                CaseResponseDTO(
+                    id=case.id,
+                    detail=case.detail,
+                    state=case.state,
+                    client=ClientResponseDTO(
+                        id=case.client.id if case.client else None,
+                        first_name=case.client.first_name if case.client else None,
+                        last_name=case.client.last_name if case.client else None
+                    ),
+                    created_at=case.created_at,
+                    updated_at=case.updated_at,
+                ).model_dump(mode='json')
                 for case in cases
             ]
 
@@ -273,7 +301,7 @@ class CaseService:
             logging.info("Obteniendo caso")
             sttmt = (
                 select(UserCase)
-                .where(Case.id == case_id)
+                .where(UserCase.case_id == case_id)
                 .where(UserCase.user_id == user_id)
                 .where(UserCase.permision == TypePermision.PRINCIPAL)
             )
@@ -299,9 +327,9 @@ class CaseService:
                     status_code=status.HTTP_400_BAD_REQUEST
                 )
             
-            await self.session.add(UserCase(
+            self.session.add(UserCase(
                 user_id= user_share,
-                case_id= case.id,
+                case_id= case_id,
                 permision= TypePermision.SECONDARY,
             ))
             

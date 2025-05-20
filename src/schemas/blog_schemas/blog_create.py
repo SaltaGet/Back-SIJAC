@@ -8,6 +8,7 @@ class BlogCreate(BaseModel):
     body: str
     categories: CategoryBlog
     user_id: str
+    favorite: bool = False
 
     @field_validator('title')
     def title_validator(cls, title):

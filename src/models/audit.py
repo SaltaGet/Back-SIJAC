@@ -13,6 +13,7 @@ class Audit(SQLModel, table=True):
     user_id: str = Field(foreign_key='users.id')
     method: str = Field(max_length=50)
     old_data: str = Field(sa_column=Column(Text))
-    new_data_data: str = Field(sa_column=Column(Text))
+    new_data: str = Field(sa_column=Column(Text))
     created_at: datetime = Field(default_factory=lambda: get_timezone())
+    user: "User" = Relationship(back_populates="audits")
   

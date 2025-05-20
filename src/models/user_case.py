@@ -19,5 +19,5 @@ class UserCase(SQLModel, table=True):
     permision: TypePermision = Field(sa_column=Column(SQLAlchemyEnum(TypePermision)), default=TypePermision.SECONDARY)
     created_at: datetime = Field(default_factory=lambda: get_timezone())
     updated_at: datetime = Field(default_factory=lambda: get_timezone())
-    user: "User" = Relationship(back_populates="users")
-    case: "Case" = Relationship(back_populates="cases")
+    case: "Case" = Relationship(back_populates="users")
+    user: "User" = Relationship(back_populates="user_cases")

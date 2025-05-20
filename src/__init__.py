@@ -18,6 +18,9 @@ from src.routers.email_router import email_router
 from src.routers.image_router import image_router
 from src.routers.availability_router import availability_router
 from src.routers.appointment_router import appointment_router
+from src.routers.client_router import client_router
+from src.routers.case_router import case_router
+from src.routers.audit_router import audit_router
 
 setup_logging()
 
@@ -36,6 +39,9 @@ app.include_router(router= email_router)
 app.include_router(router= image_router)
 app.include_router(router= availability_router)
 app.include_router(router= appointment_router)
+app.include_router(router= client_router)
+app.include_router(router= case_router)
+app.include_router(router= audit_router)
 
 origins = [
     '*'

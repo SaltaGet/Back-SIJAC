@@ -27,4 +27,5 @@ class User(SQLModel, table=True):
     blogs: List["Blog"] = Relationship(back_populates='user')
     availabilities: list["Availability"] = Relationship(back_populates='user')
     appointments: list["Appointment"] = Relationship(back_populates='user')
-    cases: list["UserCase"] = Relationship(back_populates='user')
+    user_cases: list["UserCase"] = Relationship(back_populates="user")
+    audits: list["Audit"] = Relationship(back_populates='user')

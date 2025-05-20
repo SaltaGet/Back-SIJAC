@@ -24,4 +24,4 @@ class Case(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: get_timezone())
     client_id: str = Field(foreign_key='clients.id')
     client: "Client" = Relationship(back_populates="cases")
-    users: list["UserCase"] = Relationship(back_populates="user")
+    users: list["UserCase"] = Relationship(back_populates="case")

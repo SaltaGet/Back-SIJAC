@@ -1,10 +1,11 @@
 from datetime import date, datetime, timedelta
+import json
 import logging
 import asyncio
 from fastapi import HTTPException, status
 from src.config.timezone import get_timezone
 from src.models.appointment import Appointment, StateAppointment
-from sqlmodel import between, select
+from sqlmodel import between, or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from src.models.audit import Audit
@@ -35,12 +36,11 @@ class ClientService:
 
             await self.session.flush()
 
-            await self.session.add(Audit(
+            self.session.add(Audit(
                 user_id= user_id,
                 method= "CREATE",
                 old_data= "",
                 new_data= new_client.model_dump(mode='json'),
-                created_at= get_timezone()
             ))
 
             await self.session.commit()
@@ -132,7 +132,12 @@ class ClientService:
     async def get_by_name(self, name: str):
         try:
             logging.info("Obteniendo clientes")
-            sttmt = select(Client).where(Client.dni.like(f"%{name}%"))
+            sttmt = select(Client).where(
+                or_(
+                    Client.first_name.like(f"%{name}%"),
+                    Client.last_name.like(f"%{name}%")
+                )
+            )
             clients: list[Client] = (await self.session.exec(sttmt)).all()
 
             list_clients: list[ClientResponse] = [
@@ -173,12 +178,11 @@ class ClientService:
             client.phone = client_udpate.phone
             client.updated_at = get_timezone()
 
-            await self.session.add(Audit(
+            self.session.add(Audit(
                 user_id= user_id,
                 method= "UPDATE",
-                old_data= client_copy.model_dump(mode='json'),
-                new_data= client.model_dump(mode='json'),
-                created_at= get_timezone()
+                old_data= json.dumps(client_copy.model_dump(mode='json')),
+                new_data= json.dumps(client.model_dump(mode='json')),
             ))
 
             await self.session.commit()

@@ -19,7 +19,7 @@ async def get_all(
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-  return await ClientService(session).get_all(user.id)
+  return await ClientService(session).get_all()
 
 @client_router.get('/get/{client_id}')
 async def get(
@@ -27,11 +27,11 @@ async def get(
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await ClientService(session).get(client_id, user.id)
+    return await ClientService(session).get(client_id)
 
-@client_router.get('/get_by_dni/{dni}')
+@client_router.get('/get_by_dni')
 async def get_by_dni(
-    dni: str,
+    dni: str = Query(..., min_length=3, max_length=20),
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
@@ -43,7 +43,7 @@ async def get_by_name(
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-  return await ClientService(session).get_by_name(name, user.id)
+  return await ClientService(session).get_by_name(name)
 
 ############################### PUT ###############################
 
