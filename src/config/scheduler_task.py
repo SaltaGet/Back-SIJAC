@@ -18,6 +18,8 @@ async def backup_database():
                 appointments: list[Appointment] = (await session.exec(sttmt)).all()
                 for appointment in appointments:
                     await session.delete(appointment)
+
+                await session.commit()
                 break
             except Exception as e:
                 logging.error(f"Error al eliminar citas antiguas: {e}")

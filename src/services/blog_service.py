@@ -149,7 +149,7 @@ class BlogService:
                 detail="Error al intentar obtener el blog"
             )
         
-    async def update(self, blog: BlogUpdate, image: UploadFile | None):
+    async def update(self, blog: BlogUpdate, image: UploadFile | None, user_id: str):
         try:
             logging.info("Actualizando blog")
             sttmt = select(Blog).where(
@@ -162,6 +162,12 @@ class BlogService:
                 return JSONResponse(
                     content={"detail": "Blog no encontrado"},
                     status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            if exist_blog.user_id != user_id:
+                return JSONResponse(
+                    content={"detail": "No tienes permiso para editar este blog"},
+                    status_code=status.HTTP_403_FORBIDDEN
                 )
             
             exist_blog.title = blog.title
@@ -208,6 +214,12 @@ class BlogService:
                 return JSONResponse(
                     content={"detail": "Blog no encontrado"},
                     status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            if blog.user_id != blog.user_id:
+                return JSONResponse(
+                    content={"detail": "No tienes permiso para eliminar este blog"},
+                    status_code=status.HTTP_403_FORBIDDEN
                 )
             
             await self.session.delete(blog)

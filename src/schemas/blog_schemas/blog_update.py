@@ -11,7 +11,7 @@ class BlogUpdate(BaseModel):
     user_id: str
 
     @field_validator('title')
-    def description_validator(cls, title):
+    def title_validator(cls, title):
         if len(title.strip()) < 1:
            raise ValueError('El titulo no puede estar vacio')
         return title

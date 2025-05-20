@@ -92,7 +92,7 @@ async def update(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Error en los datos del usuario: {str(e)}"
         )
-    return await BlogService(session).update(blog, image)
+    return await BlogService(session).update(blog, image, user.id)
 
 ############################### DELETE ###############################
 
@@ -102,5 +102,5 @@ async def delete(
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await BlogService(session).delete(blog_id)
+    return await BlogService(session).delete(blog_id, user.id)
 
