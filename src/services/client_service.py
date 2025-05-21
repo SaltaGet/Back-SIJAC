@@ -40,7 +40,7 @@ class ClientService:
                 user_id= user_id,
                 method= "CREATE",
                 old_data= "",
-                new_data= new_client.model_dump(mode='json'),
+                new_data= json.dumps(new_client.model_dump(mode='json'))
             ))
 
             await self.session.commit()
