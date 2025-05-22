@@ -21,11 +21,21 @@ async def create(
     body: str = Form(reqired= True, min_length=20, description='El cuerpo no puede estar vacio, debe de contener al menos 20 caracteres'),
     categories: CategoryBlog = Form(...),
     image: UploadFile = File(...),
+    favorite: str = Form(...),
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
-):
+):  
+    if favorite not in ("true", "false"):
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El campo favorite solo puede ser 'true' o 'false'"
+            )
+    if favorite == 'true':
+        favorite = True
+    else:
+        favorite = False
     try:
-        blog: BlogCreate = BlogCreate(title= title, body= body, categories= categories, user_id= user.id)
+        blog: BlogCreate = BlogCreate(title= title, body= body, categories= categories, user_id= user.id, favorite= favorite)
     except ValueError as e:
             logging.error(f"Error de validación: {str(e)}")
             raise HTTPException(
@@ -84,11 +94,21 @@ async def update(
     body: str = Form(reqired= True, min_length=20, description='El cuerpo no puede estar vacio debe de contener al menos 20 caracteres'),
     categories: CategoryBlog = Form(...),
     image: UploadFile | None = File(None),
+    favorite: str = Form(...),
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
+    if favorite not in ("true", "false"):
+        raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El campo favorite solo puede ser 'true' o 'false'"
+            )
+    if favorite == 'true':
+        favorite = True
+    else:
+        favorite = False
     try:
-        blog: BlogUpdate = BlogUpdate(id= blog_id, title= title, body= body, categories= categories, user_id= user.id)
+        blog: BlogUpdate = BlogUpdate(id= blog_id, title= title, body= body, categories= categories, user_id= user.id, favorite= favorite)
     except ValueError as e:
             logging.error(f"Error de validación: {str(e)}")
             raise HTTPException(
