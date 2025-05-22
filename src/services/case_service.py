@@ -248,6 +248,7 @@ class CaseService:
                 )
             
             case.detail = client_udpate.detail
+            case.state = client_udpate.state
             await self.session.commit()
 
             logging.info("Caso editado con exito")
