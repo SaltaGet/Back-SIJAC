@@ -260,7 +260,7 @@ class BlogService:
                 detail="Error al intentar obtener el blog"
             )
         
-    async def delete(self, blog_id: str):
+    async def delete(self, blog_id: str, user_id: str):
         try:
             logging.info("Eliminando blog")
             sttmt = select(Blog).where(Blog.id == blog_id)
@@ -272,7 +272,7 @@ class BlogService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            if blog.user_id != blog.user_id:
+            if blog.user_id != user_id:
                 return JSONResponse(
                     content={"detail": "No tienes permiso para eliminar este blog"},
                     status_code=status.HTTP_403_FORBIDDEN
