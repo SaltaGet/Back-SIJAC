@@ -397,4 +397,43 @@ class CaseService:
                 detail="Error al intentar eliminar el caso compartido"
             )
         
-   
+    async def delete(self, case_id: str, user_id: str):
+        try:
+            logging.info("Obteniendo caso")
+            sttmt = (
+                select(Case)
+                .join(UserCase, UserCase.case_id == Case.id)
+                .where(Case.id == case_id)
+                .where(UserCase.user_id == user_id)
+                .where(UserCase.permision == TypePermision.PRINCIPAL)
+            )
+            case: Case | None = (await self.session.exec(sttmt)).first()
+
+            if case is None:
+                return JSONResponse(
+                    content={"detail": "Caso no encontrado"},
+                    status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            sttmt_shared = select(UserCase).where(UserCase.case_id == case.id)
+            cases_shared: List[UserCase] = (await self.session.exec(sttmt_shared)).unique().all()
+
+            for case_shared in cases_shared:
+                await self.session.delete(case_shared)
+            
+            await self.session.delete(case)
+            
+            await self.session.commit()
+
+            logging.info("Caso eliminado con exito")
+            
+            return JSONResponse(
+                content= {"detail": "Caso eliminado"},
+                status_code=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logging.error(f"Error al eliminar caso: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al intentar eliminar el caso"
+            )

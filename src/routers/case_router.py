@@ -107,7 +107,7 @@ async def delete(
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await CaseService(session).create(case_id, user.id)
+    return await CaseService(session).delete(case_id, user.id)
 
 
 
