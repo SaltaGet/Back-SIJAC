@@ -139,6 +139,10 @@ async def reset_tables(
     await session.exec(text("DELETE FROM appointments;"))
     await session.exec(text("DELETE FROM availabilities;"))
     await session.exec(text("DELETE FROM blogs;"))
+    await session.exec(text("DELETE FROM audits;"))
+    await session.exec(text("DELETE FROM cases;"))
+    await session.exec(text("DELETE FROM clients;"))
+    await session.exec(text("DELETE FROM user_case;"))
     await session.commit()
     return JSONResponse(
         status_code=status.HTTP_200_OK,
