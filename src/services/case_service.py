@@ -127,6 +127,7 @@ class CaseService:
                 select(Case)
                 .join(UserCase, UserCase.case_id == Case.id)
                 .where(UserCase.user_id == user_id)
+                .where(Case.id == case_id)
                 .options(
                     selectinload(Case.client),
                     selectinload(Case.users).selectinload(UserCase.user)  # si `users` es relación intermedia
@@ -253,6 +254,7 @@ class CaseService:
             sttmt = (
                 select(Case)
                 .join(UserCase, UserCase.case_id == Case.id)
+                .where(Case.state == state)
                 .where(UserCase.user_id == user_id)
                 .options(
                     selectinload(Case.client),
