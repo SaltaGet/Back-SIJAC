@@ -13,6 +13,7 @@ class CaseResponse(BaseModel):
     client: ClientResponse
     created_at: datetime
     updated_at: datetime
+    owner: bool
     users: list[UserResponse] = []
 
     class Config:

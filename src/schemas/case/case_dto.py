@@ -8,6 +8,7 @@ class CaseResponseDTO(BaseModel):
     id: str
     detail: str
     state: StateCase
+    owner: bool
     client: ClientResponseDTO
     created_at: datetime
     updated_at: datetime

@@ -68,31 +68,39 @@ class CaseService:
                 .join(UserCase, UserCase.case_id == Case.id)
                 .where(UserCase.user_id == user_id)
                 .options(
-                    joinedload(Case.client)
+                    joinedload(Case.client),
+                    joinedload(Case.users)
                 )
             )
-           
-            cases: list[Case] = (await self.session.exec(sttmt)).all()
 
-            list_clients: list[CaseResponseDTO] = [
-                CaseResponseDTO(
-                    id= case.id,
-                    detail= case.detail,
-                    state= case.state,
-                    client= ClientResponseDTO(
-                        id= case.client.id,
-                        first_name= case.client.first_name,
-                        last_name= case.client.last_name
-                        ),
-                    created_at= case.created_at,
-                    updated_at= case.updated_at,
-                ).model_dump(mode='json')
-                for case in cases
-            ]
+            cases: list[Case] = (await self.session.exec(sttmt)).unique().all()
+            list_cases: list[CaseResponseDTO] = []
+
+            for case in cases:
+                owner = False
+                for user in case.users:
+                    if user.user_id == user_id:
+                        owner= user.permision == TypePermision.PRINCIPAL
+                        break
+                list_cases.append(CaseResponseDTO(
+                        id= case.id,
+                        detail= case.detail,
+                        state= case.state,
+                        client= ClientResponseDTO(
+                            id= case.client.id,
+                            first_name= case.client.first_name,
+                            last_name= case.client.last_name
+                            ).model_dump(mode='json'),
+                        owner= owner,
+                        created_at= case.created_at,
+                        updated_at= case.updated_at,
+                    ).model_dump(mode='json')
+                )
+
             logging.info("Casos obtenidos")
 
             return JSONResponse(
-                content= list_clients,
+                content= list_cases,
                 status_code=status.HTTP_200_OK
             )
         except Exception as e:
@@ -112,7 +120,7 @@ class CaseService:
                 .where(UserCase.user_id == user_id)
                 .options(
                     joinedload(Case.client),
-                    joinedload(Case.users)
+                    joinedload(Case.users),
                 )
             )
             case: Case | None = (await self.session.exec(sttmt)).first()
@@ -123,11 +131,18 @@ class CaseService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
+            owner = False
+            for user in case.users:
+                if user.user_id == user_id:
+                    owner= user.permision == TypePermision.PRINCIPAL
+                    break
+            
             case_response = CaseResponse(
                 id=case.id,
                 detail=case.detail,
                 state=case.state,
                 client=ClientResponse.model_validate(case.client),
+                owner= owner,
                 created_at=case.created_at,
                 updated_at=case.updated_at,
                 users=[UserResponse.model_validate(uc.user) for uc in case.users] if case.users else []
@@ -153,26 +168,50 @@ class CaseService:
                 .where(Case.client_id == client_id)
                 .where(UserCase.user_id == user_id)
                 .options(
-                    joinedload(Case.client)
+                    joinedload(Case.client),
+                    joinedload(Case.users)
                 )
             )
-            cases: list[Case] = (await self.session.exec(sttmt)).all()
+            cases: list[Case] = (await self.session.exec(sttmt)).unique().all()
 
-            list_cases: list[CaseResponseDTO] = [
-                CaseResponseDTO(
-                    id=case.id,
-                    detail=case.detail,
-                    state=case.state,
-                    client=ClientResponseDTO(
-                        id=case.client.id if case.client else None,
-                        first_name=case.client.first_name if case.client else None,
-                        last_name=case.client.last_name if case.client else None
-                    ),
-                    created_at=case.created_at,
-                    updated_at=case.updated_at,
-                ).model_dump(mode='json')
-                for case in cases
-            ]
+            # list_cases: list[CaseResponseDTO] = [
+            #     CaseResponseDTO(
+            #         id=case.id,
+            #         detail=case.detail,
+            #         state=case.state,
+            #         client=ClientResponseDTO(
+            #             id=case.client.id if case.client else None,
+            #             first_name=case.client.first_name if case.client else None,
+            #             last_name=case.client.last_name if case.client else None
+            #         ),
+            #         created_at=case.created_at,
+            #         updated_at=case.updated_at,
+            #     ).model_dump(mode='json')
+            #     for case in cases
+            # ]
+
+            list_cases: list[CaseResponseDTO] = []
+
+            for case in cases:
+                owner = False
+                for user in case.users:
+                    if user.user_id == user_id:
+                        owner= user.permision == TypePermision.PRINCIPAL
+                        break
+                list_cases.append(CaseResponseDTO(
+                        id= case.id,
+                        detail= case.detail,
+                        state= case.state,
+                        client= ClientResponseDTO(
+                            id= case.client.id,
+                            first_name= case.client.first_name,
+                            last_name= case.client.last_name
+                            ).model_dump(mode='json'),
+                        owner= owner,
+                        created_at= case.created_at,
+                        updated_at= case.updated_at,
+                    ).model_dump(mode='json')
+                )
 
             logging.info("Casos obtenidos con exito")
             
@@ -196,27 +235,51 @@ class CaseService:
                 .where(Case.state == state)
                 .where(UserCase.user_id == user_id)
                 .options(
-                    joinedload(Case.client)
+                    joinedload(Case.client),
+                    joinedload(Case.users)
                 )
             )
             cases: list[Case] = (await self.session.exec(sttmt)).all()
 
-            list_cases: list[CaseResponseDTO] = [
-                CaseResponseDTO(
-                    id=case.id,
-                    detail=case.detail,
-                    state=case.state,
-                    client=ClientResponseDTO(
-                        id=case.client.id if case.client else None,
-                        first_name=case.client.first_name if case.client else None,
-                        last_name=case.client.last_name if case.client else None
-                    ),
-                    created_at=case.created_at,
-                    updated_at=case.updated_at,
-                ).model_dump(mode='json')
-                for case in cases
-            ]
+            # list_cases: list[CaseResponseDTO] = [
+            #     CaseResponseDTO(
+            #         id=case.id,
+            #         detail=case.detail,
+            #         state=case.state,
+            #         client=ClientResponseDTO(
+            #             id=case.client.id if case.client else None,
+            #             first_name=case.client.first_name if case.client else None,
+            #             last_name=case.client.last_name if case.client else None
+            #         ),
+            #         created_at=case.created_at,
+            #         updated_at=case.updated_at,
+            #     ).model_dump(mode='json')
+            #     for case in cases
+            # ]
 
+            list_cases: list[CaseResponseDTO] = []
+
+            for case in cases:
+                owner = False
+                for user in case.users:
+                    if user.user_id == user_id:
+                        owner= user.permision == TypePermision.PRINCIPAL
+                        break
+                list_cases.append(CaseResponseDTO(
+                        id= case.id,
+                        detail= case.detail,
+                        state= case.state,
+                        client= ClientResponseDTO(
+                            id= case.client.id,
+                            first_name= case.client.first_name,
+                            last_name= case.client.last_name
+                            ).model_dump(mode='json'),
+                        owner= owner,
+                        created_at= case.created_at,
+                        updated_at= case.updated_at,
+                    ).model_dump(mode='json')
+                )
+                
             logging.info("Casos obtenidos con exito")
             
             return JSONResponse(
