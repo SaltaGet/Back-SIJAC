@@ -18,7 +18,7 @@ from src.schemas.case.case_dto import CaseResponseDTO
 from src.schemas.case.case_response import CaseResponse
 import copy
 from sqlalchemy.orm import joinedload
-
+from sqlalchemy.orm import selectinload
 from src.schemas.case.case_update import CaseUpdate
 from src.schemas.client.client_dto import ClientResponseDTO
 from src.schemas.client.client_response import ClientResponse
@@ -113,14 +113,23 @@ class CaseService:
     async def get(self, case_id: str, user_id: str):
         try:
             logging.info("Obteniendo Caso")
+            # sttmt = (
+            #     select(Case)
+            #     .join(UserCase, UserCase.case_id == Case.id)
+            #     .where(Case.id == case_id)
+            #     .where(UserCase.user_id == user_id)
+            #     .options(
+            #         joinedload(Case.client),
+            #         joinedload(Case.users)
+            #     )
+            # )
             sttmt = (
                 select(Case)
                 .join(UserCase, UserCase.case_id == Case.id)
-                .where(Case.id == case_id)
                 .where(UserCase.user_id == user_id)
                 .options(
-                    joinedload(Case.client),
-                    joinedload(Case.users),
+                    selectinload(Case.client),
+                    selectinload(Case.users).selectinload(UserCase.user)  # si `users` es relación intermedia
                 )
             )
             case: Case | None = (await self.session.exec(sttmt)).first()
@@ -141,11 +150,13 @@ class CaseService:
                 id=case.id,
                 detail=case.detail,
                 state=case.state,
-                client=ClientResponse.model_validate(case.client),
+                # client=ClientResponse.model_validate(case.client),
+                client=ClientResponse(**case.client.model_dump()).model_dump(mode='json'),
                 owner= owner,
                 created_at=case.created_at,
                 updated_at=case.updated_at,
-                users=[UserResponse.model_validate(uc.user) for uc in case.users] if case.users else []
+                # users=[UserResponse.model_validate(uc.user) for uc in case.users] if case.users else []
+                users=[UserResponse(**uc.user.model_dump()).model_dump(mode='json') for uc in case.users] if case.users else []
             )
             
             return JSONResponse(
@@ -229,14 +240,23 @@ class CaseService:
     async def get_by_state(self, state: StateCase, user_id: str):
         try:
             logging.info("Obteniendo casos")
+            # sttmt = (
+            #     select(Case)
+            #     .join(UserCase, UserCase.case_id == Case.id)
+            #     .where(Case.state == state)
+            #     .where(UserCase.user_id == user_id)
+            #     .options(
+            #         joinedload(Case.client),
+            #         joinedload(Case.users)
+            #     )
+            # )
             sttmt = (
                 select(Case)
                 .join(UserCase, UserCase.case_id == Case.id)
-                .where(Case.state == state)
                 .where(UserCase.user_id == user_id)
                 .options(
-                    joinedload(Case.client),
-                    joinedload(Case.users)
+                    selectinload(Case.client),
+                    selectinload(Case.users).selectinload(UserCase.user)  # si `users` es relación intermedia
                 )
             )
             cases: list[Case] = (await self.session.exec(sttmt)).all()
@@ -279,7 +299,7 @@ class CaseService:
                         updated_at= case.updated_at,
                     ).model_dump(mode='json')
                 )
-                
+
             logging.info("Casos obtenidos con exito")
             
             return JSONResponse(
