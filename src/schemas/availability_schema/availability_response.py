@@ -6,7 +6,7 @@ from src.schemas.appointment_schema.appointment_dto import AppointmentDto
 
 class AvailabilityResponseDto(BaseModel):
     id: str
-    user_id: str
+    room_id: str
     date_all: date
     appointments: list[AppointmentDto]
 

@@ -9,6 +9,7 @@ from src.config.timezone import get_timezone
 
 class RoleUser(str, Enum):
     USER = "user"
+    SECRETARY = "secretary"
     ADMIN = "admin"
 
 class User(SQLModel, table=True):

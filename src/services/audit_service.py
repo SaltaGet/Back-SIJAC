@@ -1,21 +1,14 @@
-import base64
 import logging
-import os
 from typing import List
-import zlib
-from fastapi import HTTPException, Request, status, UploadFile
+from fastapi import HTTPException, status
 from src.config.timezone import get_timezone
 from src.models.audit import Audit
-from src.models.blog_model import Blog
 from sqlmodel import desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import joinedload
-from src.schemas.blog_schemas.blog_create import BlogCreate
 from src.schemas.blog_schemas.blog_response import BlogResponse
-from src.schemas.blog_schemas.blog_update import BlogUpdate
 from src.schemas.user_schema.user_response import UserResponse
-from src.services.image_service import ImageTool
 
 
 class AuditService:

@@ -12,6 +12,9 @@ from src.database.db import db
 import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from src.routers.room_router import room_router
+from src.routers.room_availability_router import room_availability_router
+from src.routers.room_appointment_router import room_appointment_router
 from src.routers.user_router import user_router
 from src.routers.blog_router import blog_router
 from src.routers.email_router import email_router
@@ -42,6 +45,9 @@ app.include_router(router= appointment_router)
 app.include_router(router= client_router)
 app.include_router(router= case_router)
 app.include_router(router= audit_router)
+app.include_router(router= room_router)
+app.include_router(router= room_availability_router)
+app.include_router(router= room_appointment_router)
 
 origins = [
     '*'

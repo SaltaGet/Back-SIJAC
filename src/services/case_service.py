@@ -1,9 +1,6 @@
-from datetime import date, datetime, timedelta
 import logging
 import asyncio
 from fastapi import HTTPException, status
-from src.config.timezone import get_timezone
-from src.models.appointment import Appointment, StateAppointment
 from sqlmodel import between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
@@ -11,8 +8,6 @@ from src.models.case import Case, StateCase
 from src.models.user_case import UserCase, TypePermision
 from src.models.user_case import UserCase
 from src.models.user_model import User
-from src.schemas.appointment_schema.appointment_crate import AppointmentCreate
-from src.schemas.appointment_schema.appointment_response import AppointmentResponse
 from src.schemas.case.case_create import CaseCreate
 from src.schemas.case.case_dto import CaseResponseDTO
 from src.schemas.case.case_response import CaseResponse
@@ -501,7 +496,7 @@ class CaseService:
                 )
             
             sttmt_shared = select(UserCase).where(UserCase.case_id == case.id)
-            cases_shared: List[UserCase] = (await self.session.exec(sttmt_shared)).unique().all()
+            cases_shared: list[UserCase] = (await self.session.exec(sttmt_shared)).unique().all()
 
             for case_shared in cases_shared:
                 await self.session.delete(case_shared)

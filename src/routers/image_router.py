@@ -15,3 +15,9 @@ async def get_image_user(
     file_name: str,
 ):
     return await ImageTool(os.path.join('src', 'images', 'user')).get_image(file_name)
+
+@image_router.get('/get_image_room/{file_name}')
+async def get_image_user(
+    file_name: str,
+):
+    return await ImageTool(os.path.join('src', 'images', 'room')).get_image(file_name)

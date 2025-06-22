@@ -5,11 +5,19 @@ from sqlalchemy.orm import sessionmaker
 from decouple import config
 import logging
 import aiosqlite
+from sqlalchemy import event
 
 class DataBase:
     def __init__(self):
         self.database_url = f"sqlite+aiosqlite:///./{config('DB_NAME')}.db"
         self.engine = create_async_engine(self.database_url, echo=True)
+
+        if self.database_url.startswith("sqlite"):
+            @event.listens_for(self.engine.sync_engine, "connect")
+            def _set_sqlite_pragma(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA foreign_keys=ON;")
+                cursor.close()
 
     async def connect(self):
         try:
@@ -40,6 +48,10 @@ class DataBase:
             from src.models.case import Case
             from src.models.user_case import UserCase
             from src.models.audit import Audit
+            from src.models.room import Room
+            from src.models.room_availability import RoomAvailability
+            from src.models.room_appointment import RoomAppointment
+            from src.models.room_image import RoomImage
 
             async with self.engine.begin() as conn:
                 await conn.run_sync(SQLModel.metadata.create_all)
