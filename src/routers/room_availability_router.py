@@ -7,7 +7,8 @@ from src.database.db import db
 from src.models.user_model import User
 from src.schemas.availability_schema.availability_create import AvailabilityCreate
 from src.schemas.availability_schema.avaliability_update import AvailabilityUpdate
-from src.schemas.room.room_availability import RoomAvailabilityCreate
+from src.schemas.room.room_appointment import RoomAppointmentDTO
+from src.schemas.room.room_availability import RoomAvailabilityCreate, RoomAvailabilityDTO, RoomAvailabilityResponse, RoomAvailabilityUpdate
 from src.services.auth_service import AuthService
 from src.services.availability_service import AvailabilityService
 from src.services.room_availability_service import RoomAvailabilityService
@@ -27,7 +28,7 @@ async def create(
     return await RoomAvailabilityService(session).create(available)
 
 ############################### GET ###############################
-@room_availability_router.get('/get_all/{room_id}')
+@room_availability_router.get('/get_all/{room_id}', response_model=list[RoomAvailabilityDTO])
 async def get_all(
     room_id: str,
     date_start: date | None = Query(None),
@@ -43,7 +44,7 @@ async def get_all(
         raise ValueError("date_end debe ser igual o mayor a mañana.")
     return await RoomAvailabilityService(session).get_all(room_id ,date_start, date_end)
 
-@room_availability_router.get('/get/{available_id}')
+@room_availability_router.get('/get/{available_id}', response_model=list[RoomAvailabilityResponse])
 async def get(
     available_id: str,
     room_id: str = Query(...),
@@ -52,23 +53,23 @@ async def get(
     return await RoomAvailabilityService(session).get(available_id, room_id)
 
 ############################### PUT ###############################
-@authorization(['admin'])
+# @authorization(['admin'])
 @room_availability_router.put('/update/{available_id}', status_code= status.HTTP_200_OK)
 async def update(
     available_id: str,
-    available_update: AvailabilityUpdate,
+    available_update: RoomAvailabilityUpdate,
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await RoomAvailabilityService(session).update(available_id, available_update, user.id)
+    return await RoomAvailabilityService(session).update(available_id, available_update)
 
 ############################### DELETE ###############################
-@authorization(['admin'])
+# @authorization(['admin'])
 @room_availability_router.delete('/delete/{available_id}')
 async def delete(
     available_id: str,
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await RoomAvailabilityService(session).delete(available_id, user.id)
+    return await RoomAvailabilityService(session).delete(available_id)
 

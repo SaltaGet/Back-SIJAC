@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
 
-from src.schemas.room.room_availability import RoomAvailabilityResponse
+from src.schemas.room.room_availability import RoomAvailabilityDTO
 
 class RoomCreate(BaseModel):
   name: str
@@ -24,7 +24,7 @@ class RoomResponse(BaseModel):
   description: str
   price: float
   url_image: list[str]
-  availabilities: list[RoomAvailabilityResponse]
+  availabilities: list[RoomAvailabilityDTO]
   created_at: datetime
 
   class Config:

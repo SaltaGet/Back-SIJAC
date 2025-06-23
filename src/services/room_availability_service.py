@@ -15,7 +15,7 @@ from src.schemas.availability_schema.availability_dto import AvailabilityDto
 from src.schemas.availability_schema.availability_response import AvailabilityResponseDto
 from src.schemas.availability_schema.avaliability_update import AvailabilityUpdate
 from src.schemas.room.room_appointment import RoomAppointmentDTO
-from src.schemas.room.room_availability import RoomAvailabilityCreate, RoomAvailabilityDTO, RoomAvailabilityResponse
+from src.schemas.room.room_availability import RoomAvailabilityCreate, RoomAvailabilityDTO, RoomAvailabilityResponse, RoomAvailabilityUpdate
 from src.services.email_service import EmailService
 
 
@@ -49,16 +49,13 @@ class RoomAvailabilityService:
                 new_appointment = RoomAppointment(
                     date_get=new_available.date_all,
                     start_time=slot,
-                    end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=30)).time(),
+                    end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=60)).time(),
                     room_id=new_available.room_id,
                     room_availability_id=new_available.id
                 )
                 self.session.add(new_appointment)
 
         await create_appointments(new_available.start_time, new_available.end_time)
-
-        if room_available.start_time_optional and room_available.end_time_optional:
-            await create_appointments(room_available.start_time_optional, room_available.end_time_optional)
 
         await self.session.commit()
         logging.info("Disponibilidad del room creada!")
@@ -99,8 +96,6 @@ class RoomAvailabilityService:
                   date_all = avail.date_all,
                   start_time= avail.start_time,
                   end_time= avail.end_time,
-                  start_time_optional= avail.start_time_optional,
-                  end_time_optional= avail.end_time_optional,
                   disponibility = any(appointment.state == StateAppointment.NULL for appointment in avail.room_appointments),
               ).model_dump(mode='json')
               for avail in availabilities
@@ -145,10 +140,11 @@ class RoomAvailabilityService:
           
           appointments_data = [
             RoomAppointmentDTO(
+                id= appointment.id,
                 group_id= appointment.group_id,
                 date_get= appointment.date_get, 
-                first_time= appointment.start_time, 
-                last_time= appointment.end_time  
+                start_time= appointment.start_time, 
+                state= appointment.state  
               ).model_dump(mode='json') 
               for appointment in exist_available.room_appointments
             ]
@@ -169,142 +165,125 @@ class RoomAvailabilityService:
               detail="Error al intentar obtener la disponibilidad"
           )
       
-#   async def update(self, available_id: str, available_update: AvailabilityUpdate, user_id: str):
-#       try:
-#           logging.info("Actualizando disponibilidad")
-#           sttmt = select(Availability).options(
-#               joinedload(Availability.appointments)
-#           ).where(Availability.id == available_id)
-#           available: Availability | None = (await self.session.exec(sttmt)).first()
+  async def update(self, available_id: str, available_update: RoomAvailabilityUpdate):
+      try:
+          logging.info("Actualizando disponibilidad")
+          sttmt = select(RoomAvailability).options(
+              joinedload(RoomAvailability.room_appointments)
+          ).where(RoomAvailability.id == available_id)
+          available: RoomAvailability | None = (await self.session.exec(sttmt)).first()
 
-#           if available is None:
-#               return JSONResponse(
-#                   content={"detail": "Disponibilidad no encontrada"},
-#                   status_code=status.HTTP_404_NOT_FOUND
-#               )
+          if available is None:
+              return JSONResponse(
+                  content={"detail": "Disponibilidad no encontrada"},
+                  status_code=status.HTTP_404_NOT_FOUND
+              )
 
-#           if available.user_id != user_id:
-#               return JSONResponse(
-#                   content={"detail": "No tiene permiso para editar disponibilidad"},
-#                   status_code=status.HTTP_403_FORBIDDEN
-#               )
+          if available.date_all == date.today():
+              return JSONResponse(
+                  content={"detail": "No se puede modificar la fecha de hoy"},
+                  status_code=status.HTTP_400_BAD_REQUEST
+              )
 
-#           if available.date_all == date.today():
-#               return JSONResponse(
-#                   content={"detail": "No se puede modificar la fecha de hoy"},
-#                   status_code=status.HTTP_400_BAD_REQUEST
-#               )
+          available.room_appointments.sort(key=lambda appt: appt.start_time)
 
-#           available.appointments.sort(key=lambda appt: appt.start_time)
+          active_appts = [
+              appt for appt in available.room_appointments
+              if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT, StateAppointment.RESERVED]
+          ]
 
-#           active_appts = [
-#               appt for appt in available.appointments
-#               if appt.state in [StateAppointment.PENDING, StateAppointment.ACCEPT]
-#           ]
+          if not active_appts:
+              available.start_time = available_update.start_time
+              available.end_time = available_update.end_time
 
-#           if not active_appts:
-#               # No hay turnos activos, se puede actualizar todo y recrear
-#               available.start_time = available_update.start_time
-#               available.end_time = available_update.end_time
-#               available.start_time_optional = available_update.start_time_optional
-#               available.end_time_optional = available_update.end_time_optional
+              for appointment in available.room_appointments:
+                  await self.session.delete(appointment)
 
-#               for appointment in available.appointments:
-#                   await self.session.delete(appointment)
+              slots: list[time] = []
+              slots += await self.generate_time_slots(available_update.start_time, available_update.end_time)
 
-#               # Generar nuevos slots de ambos rangos si se proveen
-#               slots: list[time] = []
-#               slots += await self.generate_time_slots(available_update.start_time, available_update.end_time)
+              for slot in slots:
+                  new_appointment = RoomAppointment(
+                      date_get=available.date_all,
+                      start_time=slot,
+                      end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=60)).time(),
+                      room_availability_id=available.id,
+                      room_id=available.room_id
+                  )
+                  self.session.add(new_appointment)
 
-#               if available_update.start_time_optional and available_update.end_time_optional:
-#                   slots += await self.generate_time_slots(available_update.start_time_optional, available_update.end_time_optional)
+              await self.session.commit()
 
-#               for slot in slots:
-#                   new_appointment = Appointment(
-#                       date_get=available.date_all,
-#                       start_time=slot,
-#                       end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=30)).time(),
-#                       user_id=available.user_id,
-#                       availability_id=available.id
-#                   )
-#                   self.session.add(new_appointment)
+              logging.info("Disponibilidad actualizada")
+              return JSONResponse(
+                  content={'detail': 'Disponibilidad editada con éxito!'},
+                  status_code=status.HTTP_200_OK
+              )
 
-#               await self.session.commit()
+          end_time_naive = available_update.end_time.replace(tzinfo=None)
+          dt = datetime.combine(datetime.today(), end_time_naive)
+          dt_minus_1h = dt - timedelta(hours=1)
+          new_time = dt_minus_1h.time()
+          updated_ranges = [
+                (
+                    available_update.start_time.replace(tzinfo=None) if available_update.start_time else None,
+                    new_time
+                )
+          ]
 
-#               logging.info("Disponibilidad actualizada")
-#               return JSONResponse(
-#                   content={'detail': 'Disponibilidad editada con éxito!'},
-#                   status_code=status.HTTP_200_OK
-#               )
+          for appt in active_appts:
+              if not any(start <= appt.start_time <= end for start, end in updated_ranges):
+                  return JSONResponse(
+                      content={"detail": f"No se puede modificar el horario. Existen turnos activos fuera del nuevo rango: {appt.start_time.strftime('%H:%M')}"},
+                      status_code=status.HTTP_400_BAD_REQUEST
+                  )
 
-#           # Validar si los turnos activos están dentro del nuevo horario
-#           updated_ranges = [
-#               (available_update.start_time, available_update.end_time)
-#           ]
-#           if available_update.start_time_optional and available_update.end_time_optional:
-#               updated_ranges.append((available_update.start_time_optional, available_update.end_time_optional))
+          appointment_save = []
+          for appoint in available.room_appointments:
+              if appoint.state in [StateAppointment.NULL, StateAppointment.CANCEL, StateAppointment.REJECT]:
+                  if appoint.state == StateAppointment.RESERVED:
+                      reason = "Se ha modificado la disponibilidad del día, por favor contactarte nuevamente con SIJAC, o enviar un turno nuevo desde nuestra web"
+                  await self.session.delete(appoint)
+              else:
+                  appointment_save.append(appoint.start_time)
 
-#           for appt in active_appts:
-#               if not any(start <= appt.start_time <= end for start, end in updated_ranges):
-#                   return JSONResponse(
-#                       content={"detail": f"No se puede modificar el horario. Existen turnos activos fuera del nuevo rango: {appt.start_time.strftime('%H:%M')}"},
-#                       status_code=status.HTTP_400_BAD_REQUEST
-#                   )
+          await self.session.flush()
 
-#           # Eliminar turnos no activos
-#           appointment_save = []
-#           for appoint in available.appointments:
-#               if appoint.state in [StateAppointment.NULL, StateAppointment.CANCEL, StateAppointment.REJECT, StateAppointment.RESERVED]:
-#                   if appoint.state == StateAppointment.RESERVED:
-#                       reason = "Se ha modificado la disponibilidad del día, por favor contactarte nuevamente con SIJAC, o enviar un turno nuevo desde nuestra web"
-#                       await EmailService().send_email_client(StateAppointment.REJECT, appoint, reason)
-#                   await self.session.delete(appoint)
-#               else:
-#                   appointment_save.append(appoint.start_time)
+          slots: list[time] = []
+          slots += await self.generate_time_slots(available_update.start_time, available_update.end_time)
 
-#           await self.session.flush()
+          for slot in slots:
+              if slot not in appointment_save:
+                  new_appointment = RoomAppointment(
+                      date_get=available.date_all,
+                      start_time=slot,
+                      end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=60)).time(),
+                      room_availability_id=available.id,
+                      room_id=available.room_id
+                  )
+                  self.session.add(new_appointment)
 
-#           # Crear nuevos turnos para los slots que no existan aún
-#           slots: list[time] = []
-#           slots += await self.generate_time_slots(available_update.start_time, available_update.end_time)
+          available.start_time = available_update.start_time
+          available.end_time = available_update.end_time
 
-#           if available_update.start_time_optional and available_update.end_time_optional:
-#               slots += await self.generate_time_slots(available_update.start_time_optional, available_update.end_time_optional)
+          await self.session.commit()
 
-#           for slot in slots:
-#               if slot not in appointment_save:
-#                   new_appointment = Appointment(
-#                       date_get=available.date_all,
-#                       start_time=slot,
-#                       end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=30)).time(),
-#                       user_id=user_id,
-#                       availability_id=available.id
-#                   )
-#                   self.session.add(new_appointment)
+          logging.info("Disponibilidad actualizada")
+          return JSONResponse(
+              content={'detail': 'Disponibilidad editada con éxito!'},
+              status_code=status.HTTP_200_OK
+          )
 
-#           available.start_time = available_update.start_time
-#           available.end_time = available_update.end_time
-#           available.start_time_optional = available_update.start_time_optional
-#           available.end_time_optional = available_update.end_time_optional
-
-#           await self.session.commit()
-
-#           logging.info("Disponibilidad actualizada")
-#           return JSONResponse(
-#               content={'detail': 'Disponibilidad editada con éxito!'},
-#               status_code=status.HTTP_200_OK
-#           )
-
-#       except Exception as e:
-#           logging.error(f"Error al editar disponibilidad: {e}")
-#           await self.session.rollback()
-#           raise HTTPException(
-#               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#               detail="Error al intentar editar la disponibilidad"
-#           )
+      except Exception as e:
+          logging.error(f"Error al editar disponibilidad: {e}")
+          await self.session.rollback()
+          raise HTTPException(
+              status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+              detail="Error al intentar editar la disponibilidad"
+          )
 
       
-  async def delete(self, available_id: str, room_id: str):
+  async def delete(self, available_id: str):
       try:
           logging.info("Eliminando disponibilidad")
           sttmt = select(RoomAvailability).options(

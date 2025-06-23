@@ -6,7 +6,7 @@ from src.database.db import db
 from src.models.user_model import User
 from src.schemas.blog_schemas.blog_create import BlogCreate
 from src.schemas.blog_schemas.blog_update import BlogUpdate
-from src.schemas.room.room import RoomCreate
+from src.schemas.room.room import RoomCreate, RoomDTO, RoomResponse, RoomUpdate
 from src.services.auth_service import AuthService
 from src.models.blog_model import CategoryBlog
 from src.services.blog_service import BlogService
@@ -16,7 +16,7 @@ room_router = APIRouter(prefix='/room', tags=['Room'])
 
 auth = AuthService()
 
-@authorization(['admin','secretary'])
+# @authorization(['admin','secretary'])
 @room_router.post('/create')
 async def create_room(
   name: str = Form(...),
@@ -33,6 +33,11 @@ async def create_room(
       "description": description,
       "price": price,
   }
+
+  if not images or len(images) == 0:
+        raise HTTPException(status_code=400, detail="Debes subir al menos una imagen.")
+  if len(images) > 5:
+    raise HTTPException(status_code=400, detail="No puedes subir más de 5 imágenes.")
 
   logging.info(f"Intentando crear room con datos: {room_data}")
 
@@ -51,3 +56,47 @@ async def create_room(
           detail=f"Error en los datos del usuario: {str(e)}"
       )
   return await RoomService(session).create(room, images)
+
+@room_router.get('/get/{room_id}', response_model=RoomResponse)
+async def get(
+  request: Request,
+  room_id: str,
+  session: AsyncSession = Depends(db.get_session),
+):
+  return await RoomService(session).get(request, room_id)
+
+@room_router.get('/get_all', response_model=list[RoomDTO])
+async def get_all(
+  request: Request,
+  session: AsyncSession = Depends(db.get_session),
+):
+  return await RoomService(session).get_all(request)
+
+# @authorization(['admin','secretary'])
+@room_router.put('/update/{room_id}', status_code= status.HTTP_200_OK)
+async def update(
+  room_id: str,
+  room_update: RoomUpdate,
+  user: User = Depends(auth.get_current_user),
+  session: AsyncSession = Depends(db.get_session),
+):
+  return await RoomService(session).update(room_id, room_update)
+
+# @authorization(['admin','secretary'])
+@room_router.put('/update_images/{room_id}', status_code= status.HTTP_200_OK)
+async def update(
+  room_id: str,
+  images: list[UploadFile],
+  user: User = Depends(auth.get_current_user),
+  session: AsyncSession = Depends(db.get_session),
+):
+  return await RoomService(session).update_images(room_id, images)
+
+# @authorization(['admin','secretary'])
+@room_router.delete('/delete/{room_id}', status_code= status.HTTP_200_OK)
+async def create_room(
+  room_id: str,
+  user: User = Depends(auth.get_current_user),
+  session: AsyncSession = Depends(db.get_session),
+):
+  return await RoomService(session).delete(room_id)

@@ -27,6 +27,3 @@ class Room(SQLModel, table=True):
       back_populates="room",
       sa_relationship_kwargs={"cascade": "all, delete-orphan"}
   )
-    # room_availabilities: list["RoomAvailability"] = Relationship(back_populates='room')
-    # room_appointments: list["RoomAppointment"] = Relationship(back_populates='room')
-    # room_images: list["RoomImage"] = Relationship(back_populates="room")

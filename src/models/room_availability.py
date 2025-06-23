@@ -10,8 +10,6 @@ class RoomAvailability(SQLModel, table= True):
     date_all: date = Field(index= True)
     start_time: time = Field()
     end_time: time = Field()
-    start_time_optional: Optional[time] = Field(default= None)
-    end_time_optional: Optional[time] = Field(default= None)
     room_id: str = Field(foreign_key= 'rooms.id', index= True, ondelete= 'CASCADE')
     room: "Room" = Relationship(back_populates="room_availabilities")
     room_appointments: list["RoomAppointment"] = Relationship(back_populates='room_availability', sa_relationship_kwargs={"cascade": "all, delete-orphan"})
