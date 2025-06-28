@@ -26,6 +26,8 @@ class RoomAppointment(SQLModel, table= True):
     tuition: str | None = Field(max_length=20)
     group_id: str | None = Field(default= None)
     state: StateAppointment = Field(sa_column=Column(SQLAlchemyEnum(StateAppointment)), default=StateAppointment.NULL)
+    room_plan_id: str | None = Field(foreign_key="room_plans.id", default= None)
+    room_plan: "RoomPlan" = Relationship(back_populates='room_appointments')
     room_id: str = Field(foreign_key="rooms.id", ondelete= 'CASCADE')
     room_availability_id: str = Field(foreign_key= 'room_availabilities.id', ondelete= 'CASCADE')
     room: "Room" = Relationship(back_populates='room_appointments')

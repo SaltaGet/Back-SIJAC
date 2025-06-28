@@ -298,6 +298,7 @@ class RoomAppointmentService:
                     appointment.cellphone = None
                     appointment.group_id = None
                     appointment.tuition = None
+                    appointment.room_plan_id = None
                 else:
                     appointment.state = new_state
 
