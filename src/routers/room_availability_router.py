@@ -21,11 +21,11 @@ auth = AuthService()
 # @authorization(['admin'])
 @room_availability_router.post('/create', status_code= status.HTTP_201_CREATED)
 async def create(
-    available: RoomAvailabilityCreate,
+    availables: list[RoomAvailabilityCreate],
     user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await RoomAvailabilityService(session).create(available)
+    return await RoomAvailabilityService(session).create(availables)
 
 ############################### GET ###############################
 @room_availability_router.get('/get_all/{room_id}', response_model=list[RoomAvailabilityDTO])

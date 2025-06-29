@@ -52,6 +52,7 @@ class DataBase:
             from src.models.room_availability import RoomAvailability
             from src.models.room_appointment import RoomAppointment
             from src.models.room_image import RoomImage
+            from src.models.room_plan import RoomPlan
 
             async with self.engine.begin() as conn:
                 await conn.run_sync(SQLModel.metadata.create_all)

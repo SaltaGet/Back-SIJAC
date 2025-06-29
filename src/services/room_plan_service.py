@@ -1,9 +1,11 @@
+from datetime import date, timedelta
 import logging
 import uuid
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from src.config.timezone import get_timezone
 from src.models.room_appointment import RoomAppointment, StateAppointment
 from src.models.room_plan import RoomPlan
 from src.schemas.room.room_appointment import RoomAppointmentDTO
@@ -92,10 +94,31 @@ class RoomPlanService:
           content={"detail": "Cita no encontrada"},
           status_code=status.HTTP_404_NOT_FOUND
         )
+      
+      if room_plan.using_hours + len(appointments) > room_plan.total_hours:
+        return JSONResponse(
+          content={"detail": "Horas insuficientes"},
+          status_code=status.HTTP_400_BAD_REQUEST
+        )
+      
+        
+      today = date.today()
 
-      new_uuid = uuid.UUID()
+      new_uuid = str(uuid.uuid4())
 
       for appointment in appointment_create: 
+        if appointment.state != StateAppointment.NULL:
+          return JSONResponse(
+            content={"detail": "El turno ya tiene cita asignada, o no esta disponible"},
+            status_code=status.HTTP_400_BAD_REQUEST
+          )
+        
+        if appointment.date_get < today+timedelta(days=3):
+          return JSONResponse(
+            content={"detail": "El turno debe solicitarse por lo menos tres dias antes"},
+            status_code=status.HTTP_400_BAD_REQUEST
+          )
+        
         appointment.first_name = room_plan.first_name
         appointment.last_name = room_plan.last_name
         appointment.email = room_plan.email
@@ -105,13 +128,15 @@ class RoomPlanService:
         appointment.room_plan_id = room_plan.id
         appointment.state = StateAppointment.ACCEPT
 
+      room_plan.using_hours += len(appointments)
+
       await self.session.commit()
       logging.info("Room plan actualizado!")
       return JSONResponse(
           content={
               "detail": "turnos agregados con exito"
               },
-          status_code=status.HTTP_201_CREATED
+          status_code=status.HTTP_200_OK
       )
     except Exception as e:
       logging.error("Error al intentar actualizar el room plan", e)
@@ -135,7 +160,8 @@ class RoomPlanService:
 
       room = RoomPlanResponse(
         **room_plan.model_dump(),
-        appointmens = [RoomAppointmentDTO.validate(appointment) for appointment in room_plan.room_appointments]
+        available_hours = room_plan.total_hours - room_plan.using_hours,
+        appointments = [RoomAppointmentDTO.model_validate(appointment) for appointment in room_plan.room_appointments]
       )
 
       return JSONResponse(
@@ -153,15 +179,15 @@ class RoomPlanService:
     try:
       logging.info("Obteniendo room plan")
       sttmt = select(RoomPlan)
-      room_plan: list[RoomPlan] = (await self.session.exec(sttmt)).all()
+      room_plans: list[RoomPlan] = (await self.session.exec(sttmt)).all()
 
-      room_plans = [
+      room_plans_dto = [
         RoomPlanDTO.model_validate(room_plan).model_dump(mode='json')
         for room_plan in room_plans
       ]
 
       return JSONResponse(
-          content=RoomPlan.model_validate(room_plan).model_dump(mode='json'),
+          content=room_plans_dto,
           status_code=status.HTTP_200_OK
       )
     except Exception as e:

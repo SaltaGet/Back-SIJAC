@@ -8,6 +8,7 @@ from sqlmodel import between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
 from src.models.room_appointment import RoomAppointment
+from src.models.room_plan import RoomPlan
 from src.models.user_model import User
 from src.schemas.room.room_appointment import RoomAppointmentCreate, RoomAppointmentDTO, RoomAppointmentIds, RoomAppointmentResponse, RoomAppointmentResponseDTO
 from src.services.auth_service import AuthService
@@ -291,6 +292,11 @@ class RoomAppointmentService:
                     )
                 
                 if new_state not in [StateAppointment.ACCEPT, StateAppointment.REJECT]:
+                    if appointment.room_plan_id is not None and new_state == StateAppointment.NULL:
+                        sttmt = select(RoomPlan).where(RoomPlan.id == appointment.room_plan_id)
+                        room_plan: RoomPlan | None = (await self.session.exec(sttmt)).first()
+                        if room_plan is not None:
+                            room_plan.using_hours -= 1
                     appointment.state = StateAppointment.NULL
                     appointment.first_name = None
                     appointment.last_name = None

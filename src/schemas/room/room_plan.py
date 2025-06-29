@@ -45,6 +45,7 @@ class RoomPlanResponse(BaseModel):
   email: str
   cellphone: str
   tuition: str 
+  available_hours: int
   appointments: list[RoomAppointmentDTO]
 
   class Config:

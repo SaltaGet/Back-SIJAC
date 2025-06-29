@@ -23,54 +23,116 @@ class RoomAvailabilityService:
   def __init__(self, session: AsyncSession):
       self.session = session
 
-  async def create(self, room_available: RoomAvailabilityCreate):
+  async def create(self, room_availabilities: list[RoomAvailabilityCreate]):
     try:
-        logging.info("Creando disponibilidad del room")
-
-        sttmt_exist = select(RoomAvailability).where(
-            RoomAvailability.date_all == room_available.date_all,
-            RoomAvailability.room_id == room_available.room_id
-        )
-        available_exist: RoomAvailability | None = (await self.session.exec(sttmt_exist)).first()
-
-        if available_exist is not None:
+            logging.info(f"Iniciando la creación de {len(room_availabilities)} disponibilidades de room.")
+            for availability_data in room_availabilities:
+                stmt_exist = select(RoomAvailability).where(
+                    RoomAvailability.date_all == availability_data.date_all,
+                    RoomAvailability.room_id == availability_data.room_id
+                )
+                existing_availability = (await self.session.exec(stmt_exist)).first()
+                if existing_availability:
+                    logging.warning(f"La disponibilidad para el room {availability_data.room_id} en la fecha {availability_data.date_all} ya existe.")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"La disponibilidad para el room {availability_data.room_id} en la fecha {availability_data.date_all} ya existe."
+                    )
+    
+            newly_created_availabilities = []
+    
+            async def create_appointments(availability: RoomAvailability):
+                slots: list[time] = await self.generate_time_slots(availability.start_time, availability.end_time)
+                for slot in slots:
+                    new_appointment = RoomAppointment(
+                        date_get=availability.date_all,
+                        start_time=slot,
+                        end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=60)).time(),
+                        room_id=availability.room_id,
+                        room_availability_id=availability.id
+                    )
+                    self.session.add(new_appointment)
+    
+            for availability_data in room_availabilities:
+                new_availability = RoomAvailability(**availability_data.model_dump())
+                self.session.add(new_availability)
+                await self.session.flush()  
+    
+                await create_appointments(new_availability)
+                newly_created_availabilities.append(new_availability)
+    
+            await self.session.commit()
+    
+            for new_item in newly_created_availabilities:
+                await self.session.refresh(new_item)
+    
+            logging.info(f"Se crearon {len(newly_created_availabilities)} disponibilidades de room exitosamente.")
+    
             return JSONResponse(
-                content={"detail": "Ya existe la disponibilidad del día para room"},
-                status_code=status.HTTP_400_BAD_REQUEST
+                content={"created_ids": [item.id for item in newly_created_availabilities]},
+                status_code=status.HTTP_201_CREATED
+            )
+    
+    except HTTPException:
+            logging.error(f"Error al crear disponibilidad del room")
+            await self.session.rollback()
+            raise
+    except Exception as e:
+            logging.error(f"Error al crear disponibilidad del room: {e}")
+            await self.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error al intentar crear la disponibilidad del room."
             )
 
-        new_available = RoomAvailability(**room_available.model_dump())
-        self.session.add(new_available)
-        await self.session.flush()
+#   async def create(self, room_available: RoomAvailabilityCreate):
+#     try:
+#         logging.info("Creando disponibilidad del room")
 
-        async def create_appointments(start: time, end: time):
-            slots: list[time] = await self.generate_time_slots(start, end)
-            for slot in slots:
-                new_appointment = RoomAppointment(
-                    date_get=new_available.date_all,
-                    start_time=slot,
-                    end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=60)).time(),
-                    room_id=new_available.room_id,
-                    room_availability_id=new_available.id
-                )
-                self.session.add(new_appointment)
+#         sttmt_exist = select(RoomAvailability).where(
+#             RoomAvailability.date_all == room_available.date_all,
+#             RoomAvailability.room_id == room_available.room_id
+#         )
+#         available_exist: RoomAvailability | None = (await self.session.exec(sttmt_exist)).first()
 
-        await create_appointments(new_available.start_time, new_available.end_time)
+#         if available_exist is not None:
+#             return JSONResponse(
+#                 content={"detail": "Ya existe la disponibilidad del día para room"},
+#                 status_code=status.HTTP_400_BAD_REQUEST
+#             )
 
-        await self.session.commit()
-        logging.info("Disponibilidad del room creada!")
+#         new_available = RoomAvailability(**room_available.model_dump())
+#         self.session.add(new_available)
+#         await self.session.flush()
 
-        return JSONResponse(
-            content={"new_available": new_available.id},
-            status_code=status.HTTP_201_CREATED
-        )
-    except Exception as e:
-        logging.error(f"Error al crear disponibilidad del room: {e}")
-        await self.session.rollback()
-        raise HTTPException(
-            status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "Error al intentar crear la disponibilidad del room"
-        )
+#         async def create_appointments(start: time, end: time):
+#             slots: list[time] = await self.generate_time_slots(start, end)
+#             for slot in slots:
+#                 new_appointment = RoomAppointment(
+#                     date_get=new_available.date_all,
+#                     start_time=slot,
+#                     end_time=(datetime.combine(datetime.today(), slot) + timedelta(minutes=60)).time(),
+#                     room_id=new_available.room_id,
+#                     room_availability_id=new_available.id
+#                 )
+#                 self.session.add(new_appointment)
+
+#         await create_appointments(new_available.start_time, new_available.end_time)
+
+#         await self.session.commit()
+#         logging.info("Disponibilidad del room creada!")
+
+#         return JSONResponse(
+#             content={"new_available": new_available.id},
+#             status_code=status.HTTP_201_CREATED
+#         )
+#     except Exception as e:
+#         logging.error(f"Error al crear disponibilidad del room: {e}")
+#         await self.session.rollback()
+#         raise HTTPException(
+#             status.HTTP_500_INTERNAL_SERVER_ERROR,
+#             "Error al intentar crear la disponibilidad del room"
+#         )
 
 
   async def get_all(self, room_id: str, date_start: date = None, date_end: date = None):
