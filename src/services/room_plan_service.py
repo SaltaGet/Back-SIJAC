@@ -3,7 +3,7 @@ import logging
 import uuid
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
-from sqlmodel import select
+from sqlmodel import between, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.config.timezone import get_timezone
 from src.models.room_appointment import RoomAppointment, StateAppointment
@@ -146,10 +146,12 @@ class RoomPlanService:
           detail="Error al intentar actualizar el room plan"
       )
     
-  async def get(self, room_plan_id: str):
+  async def get(self, room_plan_id: str, date_start: date | None = None, date_end: date | None = None):
     try:
       logging.info("Obteniendo room plan")
-      sttmt = select(RoomPlan).where(RoomPlan.id == room_plan_id).options(selectinload(RoomPlan.room_appointments))
+      sttmt = (select(RoomPlan)
+               .where(RoomPlan.id == room_plan_id)
+              )
       room_plan: RoomPlan | None = (await self.session.exec(sttmt)).first()
       
       if room_plan is None:
@@ -157,11 +159,26 @@ class RoomPlanService:
           content={"detail": "Room plan no encontrado"},
           status_code=status.HTTP_404_NOT_FOUND
         )
+      
+      if date_start is not None and date_end is not None:
+        sttmt = (
+            select(RoomAppointment)
+            .where(between(RoomAppointment.date_get, date_start, date_end))
+            .where(RoomAppointment.date_get <= date_end)
+        )
+      else:
+        sttmt = (
+          select(RoomAppointment)
+          .where(RoomAppointment.room_plan_id == room_plan_id)
+          .where(RoomAppointment.date_get >= date.today())
+        )
+
+      appointments = (await self.session.exec(sttmt)).all()
 
       room = RoomPlanResponse(
         **room_plan.model_dump(),
         available_hours = room_plan.total_hours - room_plan.using_hours,
-        appointments = [RoomAppointmentDTO.model_validate(appointment) for appointment in room_plan.room_appointments]
+        appointments = [RoomAppointmentDTO.model_validate(appointment) for appointment in appointments]
       )
 
       return JSONResponse(
@@ -182,7 +199,7 @@ class RoomPlanService:
       room_plans: list[RoomPlan] = (await self.session.exec(sttmt)).all()
 
       room_plans_dto = [
-        RoomPlanDTO.model_validate(room_plan).model_dump(mode='json')
+        RoomPlanDTO(**room_plan.model_dump(), available_hours= room_plan.total_hours - room_plan.using_hours).model_dump(mode='json')
         for room_plan in room_plans
       ]
 

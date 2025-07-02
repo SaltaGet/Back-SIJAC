@@ -11,7 +11,7 @@ class RoomAppointmentCreate(BaseModel):
   email: str | None
   cellphone: str | None
   tuition: str | None 
-  room_availability_id: str
+  # room_availability_id: str
   
 class RoomAppointmentUpdate(BaseModel):
   date_get: date 

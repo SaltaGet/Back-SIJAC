@@ -27,7 +27,7 @@ class RoomAppointmentService:
             sttmt = (
                 select(RoomAppointment)
                 .where(RoomAppointment.id.in_(appointment_create.appointment_ids))
-                .where(RoomAppointment.room_availability_id == appointment_create.room_availability_id)
+                # .where(RoomAppointment.room_availability_id == appointment_create.room_availability_id)
             )
             result = (await self.session.exec(sttmt)).all()
 
@@ -98,7 +98,7 @@ class RoomAppointmentService:
             sttmt = (
                 select(RoomAppointment)
                 .where(RoomAppointment.id.in_(appointment_create.appointment_ids))
-                .where(RoomAppointment.room_availability_id == appointment_create.room_availability_id)
+                # .where(RoomAppointment.room_availability_id == appointment_create.room_availability_id)
             )
             result = (await self.session.exec(sttmt)).all()
 
@@ -144,7 +144,7 @@ class RoomAppointmentService:
                 appointment.email = appointment_create.email
                 appointment.cellphone = appointment_create.cellphone
                 appointment.tuition = appointment_create.tuition
-                appointment.state = StateAppointment.RESERVED
+                appointment.state = StateAppointment.ACCEPT
 
             await self.session.commit()
             logging.info("Turno asignado")

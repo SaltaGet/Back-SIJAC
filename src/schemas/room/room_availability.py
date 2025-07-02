@@ -21,7 +21,13 @@ class RoomAvailabilityDTO(BaseModel):
   date_all: date
   start_time: time
   end_time: time
-  disponibility: bool
+  # disponibility: bool
+  is_null: bool
+  is_pending: bool
+  is_reserved: bool
+  is_acepted: bool
+  is_rejected: bool
+  is_cancelled: bool
 
   class Config:
     orm_mode = True

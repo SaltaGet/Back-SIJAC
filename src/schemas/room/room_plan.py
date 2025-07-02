@@ -30,6 +30,7 @@ class RoomPlanDTO(BaseModel):
   email: str
   cellphone: str
   tuition: str 
+  available_hours: int
 
   class Config:
       from_attributes = True

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+from datetime import date
+from fastapi import APIRouter, Depends, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.config.decorators import authorization
 from src.database.db import db
@@ -25,10 +26,12 @@ async def get_all(
 @room_plan_router.get('/get/{room_plan_id}', response_model=RoomPlanResponse)
 async def get(
     room_plan_id: str,
+    date_start: date | None = Query(None),
+    date_end: date | None = Query(None),
     # user: User = Depends(auth.get_current_user),
     session: AsyncSession = Depends(db.get_session),
 ):
-    return await RoomPlanService(session).get(room_plan_id)
+    return await RoomPlanService(session).get(room_plan_id, date_start, date_end)
 
 ############################### PUT ###############################
 
