@@ -12,7 +12,7 @@ from src.models.blog_model import CategoryBlog
 from src.services.blog_service import BlogService
 from src.services.room_service import RoomService
 
-room_router = APIRouter(prefix='/room', tags=['Room'])
+room_router = APIRouter(prefix='/api/room', tags=['Room'])
 
 auth = AuthService()
 

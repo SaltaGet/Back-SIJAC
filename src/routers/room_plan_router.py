@@ -9,7 +9,7 @@ from src.services.auth_service import AuthService
 from src.services.room_plan_service import RoomPlanService
 
 
-room_plan_router = APIRouter(prefix='/room_plan', tags=['RoomPlan'])
+room_plan_router = APIRouter(prefix='/api/room_plan', tags=['RoomPlan'])
 
 auth = AuthService()
 

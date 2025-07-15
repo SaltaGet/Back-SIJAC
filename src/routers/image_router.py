@@ -2,7 +2,7 @@ import os
 from fastapi import APIRouter
 from src.services.image_service import ImageTool
 
-image_router = APIRouter(prefix='/image', tags=['Image'])
+image_router = APIRouter(prefix='/api/image', tags=['Image'])
 
 @image_router.get('/get_image_blog/{file_name}')
 async def get_image_blog(

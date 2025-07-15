@@ -8,7 +8,7 @@ from src.services.client_service import ClientService
 from src.services.auth_service import AuthService
 
 
-client_router = APIRouter(prefix='/client', tags=['Client'])
+client_router = APIRouter(prefix='/api/client', tags=['Client'])
 
 auth = AuthService()
 

@@ -13,7 +13,7 @@ from src.services.auth_service import AuthService
 from src.services.room_appointment_service import RoomAppointmentService
 
 
-room_appointment_router = APIRouter(prefix='/room_appointment', tags=['RoomAppointment'])
+room_appointment_router = APIRouter(prefix='/api/room_appointment', tags=['RoomAppointment'])
 
 auth = AuthService()
 

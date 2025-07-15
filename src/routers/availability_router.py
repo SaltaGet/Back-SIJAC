@@ -9,7 +9,7 @@ from src.schemas.availability_schema.avaliability_update import AvailabilityUpda
 from src.services.auth_service import AuthService
 from src.services.availability_service import AvailabilityService
 
-availability_router = APIRouter(prefix='/availability', tags=['Availability'])
+availability_router = APIRouter(prefix='/api/availability', tags=['Availability'])
 
 auth = AuthService()
 
