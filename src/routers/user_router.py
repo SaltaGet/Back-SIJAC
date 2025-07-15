@@ -11,7 +11,7 @@ from src.schemas.user_schema.user_credentials import UserCredentials
 from src.services.auth_service import AuthService, oauth_scheme
 from src.services.user_service import UserService
 
-user_router = APIRouter(prefix='/api/users', tags=['User'])
+user_router = APIRouter(prefix='/users', tags=['User'])
 
 auth = AuthService()
 

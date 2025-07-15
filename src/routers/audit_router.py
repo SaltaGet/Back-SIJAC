@@ -16,7 +16,7 @@ from src.services.auth_service import AuthService
 from src.services.case_service import CaseService
 
 
-audit_router = APIRouter(prefix='/api/audit', tags=['Audit'])
+audit_router = APIRouter(prefix='/audit', tags=['Audit'])
 
 auth = AuthService()
 

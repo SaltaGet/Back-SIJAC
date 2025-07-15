@@ -10,7 +10,7 @@ from src.services.appointment_service import AppointmentService
 from src.services.auth_service import AuthService
 
 
-appointment_router = APIRouter(prefix='/api/appointment', tags=['Appointment'])
+appointment_router = APIRouter(prefix='/appointment', tags=['Appointment'])
 
 auth = AuthService()
 

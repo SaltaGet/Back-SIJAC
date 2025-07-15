@@ -9,7 +9,7 @@ from src.services.auth_service import AuthService
 from src.models.blog_model import CategoryBlog
 from src.services.blog_service import BlogService
 
-blog_router = APIRouter(prefix='/api/blog', tags=['Blog'])
+blog_router = APIRouter(prefix='/blog', tags=['Blog'])
 
 auth = AuthService()
 
