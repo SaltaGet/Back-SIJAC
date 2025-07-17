@@ -31,7 +31,7 @@ setup_logging()
 app = FastAPI(title= 'API SIJAC',
             description='API SIJAC',
             version='0.0.1',
-            docs_url='/api',
+            docs_url='/api/',
             )
 
 app.state.rate_limit_ips = {}
@@ -52,14 +52,15 @@ app.include_router(router= room_appointment_router)
 app.include_router(router= room_plan_router)
 
 origins = [
-    '*'
+    "https://sijac.com.ar",
+    "https://www.sijac.com.ar"
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

@@ -90,6 +90,10 @@ async def update(
   user: User = Depends(auth.get_current_user),
   session: AsyncSession = Depends(db.get_session),
 ):
+  if not images or len(images) == 0:
+    raise HTTPException(status_code=400, detail="Debes subir al menos una imagen.")
+  if len(images) > 5:
+    raise HTTPException(status_code=400, detail="No puedes subir más de 5 imágenes.")
   return await RoomService(session).update_images(room_id, images)
 
 # @authorization(['admin','secretary'])
