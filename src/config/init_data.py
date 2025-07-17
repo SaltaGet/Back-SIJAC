@@ -18,7 +18,7 @@ async def init_data(session: AsyncSession):
             password_hash=config('ADMIN_PASS'),
             first_name=config('ADMIN_FIRSTNAME'),
             last_name=config('ADMIN_LASTNAME'),
-            specialty=config('ADMIN_SPECIALTY')
+            specialty=config('ADMIN_SPECIALITY')
         )
         
         user_secretary = UserCreate(
@@ -27,7 +27,7 @@ async def init_data(session: AsyncSession):
             password_hash=config('SECRETARY_PASS'),
             first_name=config('SECRETARY_FIRSTNAME'),
             last_name=config('SECRETARY_LASTNAME'),
-            specialty=config('SECRETARY_SPECIALTY')
+            specialty=config('SECRETARY_SPECIALITY')
         )
 
         image_path = os.path.join('src', 'static', 'image', 'admin_user.png')
