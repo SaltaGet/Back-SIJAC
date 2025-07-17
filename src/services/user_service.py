@@ -86,7 +86,7 @@ class UserService:
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar logout")
 
     
-    async def create_user(self, user: UserCreate, image: UploadFile, is_admin: bool = False):
+    async def create_user(self, user: UserCreate, image: UploadFile, role: RoleUser = RoleUser.USER):
             try:
                 logging.info("Creando usuario")
                 statement= select(User).where(User.email == user.email)
@@ -116,10 +116,7 @@ class UserService:
                         status_code=status.HTTP_424_FAILED_DEPENDENCY
                     )
             
-                new_user: User = User(**user.model_dump(), url_image= new_image)
-
-                if is_admin == True:
-                    new_user.role = RoleUser.ADMIN
+                new_user: User = User(**user.model_dump(), role=role, url_image= new_image)
 
                 self.session.add(new_user)
 
