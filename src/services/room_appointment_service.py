@@ -291,7 +291,7 @@ class RoomAppointmentService:
                         status_code=status.HTTP_400_BAD_REQUEST
                     )
                 
-                if new_state not in [StateAppointment.ACCEPT, StateAppointment.REJECT]:
+                if new_state not in [StateAppointment.ACCEPT, StateAppointment.REJECT, StateAppointment.PENDING]:
                     if appointment.room_plan_id is not None and (new_state == StateAppointment.NULL and new_state == StateAppointment.CANCEL):
                         sttmt = select(RoomPlan).where(RoomPlan.id == appointment.room_plan_id)
                         room_plan: RoomPlan | None = (await self.session.exec(sttmt)).first()
