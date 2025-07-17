@@ -121,7 +121,7 @@ class RoomService:
 
 
         for result in results:
-          self.session.delete(result)
+          await self.session.delete(result)
           await ImageTool(os.path.join('src', 'images', 'room')).delete_image(result.url_image)
 
         await self.session.commit()
