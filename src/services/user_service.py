@@ -181,7 +181,7 @@ class UserService:
 
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/image/get_image_user/"
+            full_url = f"{scheme}://{host}/api/image/get_image_user/"
 
             users_list = []
             for user in users:

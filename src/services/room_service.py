@@ -163,7 +163,7 @@ class RoomService:
         
         scheme = request.scope.get("scheme") 
         host = request.headers.get("host")   
-        full_url = f"{scheme}://{host}/image/get_image_room/"
+        full_url = f"{scheme}://{host}/api/image/get_image_room/"
         
         room_response = RoomResponse(
           id=room.id,
@@ -211,7 +211,7 @@ class RoomService:
         
         scheme = request.scope.get("scheme") 
         host = request.headers.get("host")   
-        full_url = f"{scheme}://{host}/image/get_image_room/"
+        full_url = f"{scheme}://{host}/api/image/get_image_room/"
         
         list_rooms = []
         for room in rooms:

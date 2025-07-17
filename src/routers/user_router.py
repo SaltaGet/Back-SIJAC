@@ -112,7 +112,7 @@ async def user(
     user_data = user
     scheme = request.scope.get("scheme") 
     host = request.headers.get("host")   
-    full_url = f"{scheme}://{host}/image/get_image_user/"
+    full_url = f"{scheme}://{host}/api/image/get_image_user/"
     user_data.url_image= full_url + user_data.url_image
     return user_data
 
