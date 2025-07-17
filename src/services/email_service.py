@@ -48,7 +48,7 @@ class EmailService:
                         <p>Por el siguiente motivo:</p>
                         <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{appointment.reason}"</p>
                         <p style="text-align: center;">A partir del mensaje recibido tiene 30 minutos para confirmar la solicitud del turno</p>
-                        <a href="https://sijac.netlify.app/callback/{token}" target="_blank">
+                        <a href="https://sijac.com.ar/callback/{token}" target="_blank">
                             Confirmar solicitud
                             <button>Confirmar solicitud</button>
                         </a>
