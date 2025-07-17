@@ -41,19 +41,18 @@ async def init_data(session: AsyncSession):
 
         if response.status_code == 201:
             logging.info("Usuario admin creado con éxito")
-            return True
         
-        image_recepcion = os.path.join('src', 'static', 'image', 'recepcion.png')
-        upload_file_secretary = await create_upload_file(image_recepcion)
-        response = await UserService(session).create_user(user_secretary, upload_file_secretary, RoleUser.SECRETARY)
+            image_recepcion = os.path.join('src', 'static', 'image', 'recepcion.png')
+            upload_file_secretary = await create_upload_file(image_recepcion)
+            response = await UserService(session).create_user(user_secretary, upload_file_secretary, RoleUser.SECRETARY)
 
-        if response.status_code == 409:
-            logging.info("Usuario secretary ya existe")
-            return False
+            if response.status_code == 409:
+                logging.info("Usuario secretary ya existe")
+                return False
 
-        if response.status_code == 201:
-            logging.info("Usuario secretary creado con éxito")
-            return True
+            if response.status_code == 201:
+                logging.info("Usuario secretary creado con éxito")
+                return True
         
         return None
     except Exception as e:
