@@ -25,6 +25,7 @@ from src.routers.client_router import client_router
 from src.routers.case_router import case_router
 from src.routers.audit_router import audit_router
 from src.routers.room_plan_router import room_plan_router
+from decouple import config
 
 setup_logging()
 
@@ -51,10 +52,7 @@ app.include_router(router= room_availability_router)
 app.include_router(router= room_appointment_router)
 app.include_router(router= room_plan_router)
 
-origins = [
-    "https://sijac.com.ar",
-    "https://www.sijac.com.ar"
-]
+origins = config("ALLOWED_ORIGINS", "").split(",")
 
 app.add_middleware(
     CORSMiddleware,
