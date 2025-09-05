@@ -11,3 +11,5 @@ images
 credentials.json
 
 server.md
+
+newrelic.ini

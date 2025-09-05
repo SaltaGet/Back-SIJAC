@@ -1,0 +1,10 @@
+**/.env
+**/env/
+**/*.db
+**/.git
+**/.gitignore
+**/README.md
+**/server.md
+**/credentials.json
+**/Procfile
+**/newrelic.ini
