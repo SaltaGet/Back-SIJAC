@@ -14,7 +14,7 @@ class BlogResponse(BaseModel):
     favorite: bool
     created_at: datetime
     updated_at: datetime
-    user: UserResponse 
+    user: UserResponse | None
 
     class Config:
         from_attributes = True

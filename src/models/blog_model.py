@@ -24,5 +24,5 @@ class Blog(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: get_timezone())
     categories: CategoryBlog = Field(sa_column=Column(SQLAlchemyEnum(CategoryBlog)), default=CategoryBlog.SEVERAL)
     user_id: str = Field(foreign_key='users.id')
-    user: "User" = Relationship(back_populates="blogs")
+    user: "User" = Relationship(back_populates="blogs", sa_relationship_kwargs={"lazy": "selectin"})
     favorite: bool = Field(default=False)

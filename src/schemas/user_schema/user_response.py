@@ -6,7 +6,7 @@ class UserResponse(BaseModel):
     first_name: str
     last_name: str
     specialty: str
-    url_image: str
+    url_image: str | None
 
     class Config:
         from_attributes = True

@@ -9,7 +9,7 @@ from src.models.blog_model import Blog
 from sqlmodel import desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from src.schemas.blog_schemas.blog_create import BlogCreate
 from src.schemas.blog_schemas.blog_response import BlogResponse
 from src.schemas.blog_schemas.blog_update import BlogUpdate
@@ -60,55 +60,93 @@ class BlogService:
         try:
             logging.info("Obteniendo blogs paginados")
             offset = (page - 1) * per_page
-            
+
+            # Query con selectinload (compatible async)
             sttmt = (
                 select(Blog)
-                .options(joinedload(Blog.user))
+                .options(selectinload(Blog.user))
                 .order_by(desc(Blog.created_at))
                 .limit(per_page)
                 .offset(offset)
                 .where(Blog.favorite == False)
             )
-            
+
             blogs: List[Blog] = (await self.session.exec(sttmt)).unique().all()
 
-            sttmt_total = select(func.count(Blog.id))
+            # Conteo total con el mismo where
+            sttmt_total = select(func.count(Blog.id)).where(Blog.favorite == False)
             total_blogs = (await self.session.exec(sttmt_total)).first()
-            
-            scheme = request.scope.get("scheme") 
-            host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/api/image/get_image_blog/"
-            
+
+            scheme = request.scope.get("scheme")
+            host = request.headers.get("host")
+
+            full_url_blog = f"{scheme}://{host}/image/get_image_blog/"
+            full_url_user = f"{scheme}://{host}/image/get_image_user/"
+
             list_blogs: List[BlogResponse] = []
 
             for blog in blogs:
-                blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
-                if not blog.user.url_image.startswith("http"):
-                    blog.user.url_image = f"{scheme}://{host}/api/image/get_image_user/{blog.user.url_image}"
-                user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
-                blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
-                blog_data['user'] = user_data
+
+                # Construir la URL de la imagen del blog SIN modificar el ORM
+                blog_img = (
+                    full_url_blog + blog.url_image
+                    if blog.url_image and not blog.url_image.startswith("http")
+                    else blog.url_image
+                )
+
+                # Construir el usuario serializado
+                if blog.user:
+                    user_img = (
+                        full_url_user + blog.user.url_image
+                        if blog.user.url_image and not blog.user.url_image.startswith("http")
+                        else blog.user.url_image
+                    )
+
+                    user_data = UserResponse(
+                        id=blog.user.id,
+                        email=blog.user.email,
+                        first_name=blog.user.first_name,
+                        last_name=blog.user.last_name,
+                        specialty=blog.user.specialty,
+                        url_image=user_img,
+                    ).model_dump(mode="json")
+                else:
+                    user_data = None
+
+                # Serializar blog SIN tocar el ORM
+                blog_data = BlogResponse(
+                    id=blog.id,
+                    title=blog.title,
+                    body=blog.body,
+                    url_image=blog_img,
+                    categories=blog.categories,
+                    favorite=blog.favorite,
+                    created_at=blog.created_at,
+                    updated_at=blog.updated_at,
+                    user=user_data
+                ).model_dump(mode="json")
+
                 list_blogs.append(blog_data)
-            
+
             logging.info("Blogs obtenidos correctamente")
-            
+
             return JSONResponse(
                 content={
                     "page": page,
                     "per_page": per_page,
-                    "total": len(blogs),
-                    "total_pages": (total_blogs // per_page) + 1 if total_blogs > 0 else 0,
+                    "total": total_blogs,
+                    "total_pages": (total_blogs // per_page) + (1 if total_blogs % per_page else 0),
                     "data": list_blogs
                 },
                 status_code=200
             )
+
         except Exception as e:
             logging.error(f"Error al obtener blogs: {e}")
             raise HTTPException(
                 status_code=500,
                 detail="Error al intentar obtener los blogs"
             )
-        
 
     async def get_favorites(self, request: Request, page: int = 1, per_page: int = 9):
         try:
@@ -131,17 +169,33 @@ class BlogService:
             
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/api/image/get_image_blog/"
+            full_url = f"{scheme}://{host}/image/get_image_blog/"
             
             list_blogs: List[BlogResponse] = []
 
             for blog in blogs:
                 blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
-                if not blog.user.url_image.startswith("http"):
-                    blog.user.url_image = f"{scheme}://{host}/api/image/get_image_user/{blog.user.url_image}"
-                user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
+                # if not blog.user.url_image.startswith("http"):
+                #     blog.user.url_image = f"{scheme}://{host}/api/image/get_image_user/{blog.user.url_image}"
+                if blog.user:
+                    if  blog.user.url_image is None:
+                        blog.user.url_image = None
+                    else:
+                        if not blog.user.url_image.startswith("http"):
+                            blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
+                else:
+                    blog.user = None
+                
+                
+                user_data = (
+                    UserResponse.model_validate(blog.user).model_dump(mode='json')
+                    if blog.user
+                    else None
+                )
+
                 blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
                 blog_data['user'] = user_data
+
                 list_blogs.append(blog_data)
             
             logging.info("Blogs obtenidos correctamente")
@@ -176,7 +230,7 @@ class BlogService:
 
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/api/image/get_image_blog/"
+            full_url = f"{scheme}://{host}/image/get_image_blog/"
             blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
             
             if blog is None:
@@ -185,11 +239,26 @@ class BlogService:
                     status_code=status.HTTP_404_NOT_FOUND
                 )
             
-            if not blog.user.url_image.startswith("http"):
-                blog.user.url_image = f"{scheme}://{host}/api/image/get_image_user/{blog.user.url_image}"
-            user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
-            blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
-            blog_data['user'] = user_data
+            # if not blog.user.url_image.startswith("http"):
+            #     blog.user.url_image = f"{scheme}://{host}/api/image/get_image_user/{blog.user.url_image}"
+            if blog.user:
+                full_url_user = f"{scheme}://{host}/image/get_image_user/"
+                if blog.user.url_image:
+                    if not blog.user.url_image.startswith("http"):
+                        blog.user.url_image = full_url_user + blog.user.url_image
+                else:
+                    blog.user.url_image = None        
+
+            # user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
+            # blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
+            # blog_data['user'] = user_data
+            user_data = (
+            UserResponse.model_validate(blog.user).model_dump(mode="json")
+            if blog.user
+                else None
+            )
+            blog_data = BlogResponse.model_validate(blog).model_dump(mode="json")
+            blog_data["user"] = user_data
 
             logging.info("Blog obtenido")
 
@@ -316,14 +385,14 @@ class BlogService:
             
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/api/image/get_image_blog/"
+            full_url = f"{scheme}://{host}/image/get_image_blog/"
             
             list_blogs: List[BlogResponse] = []
 
             for blog in blogs:
                 blog.url_image = full_url + blog.url_image if not blog.url_image.startswith("http") else blog.url_image
                 if not blog.user.url_image.startswith("http"):
-                    blog.user.url_image = f"{scheme}://{host}/api/image/get_image_user/{blog.user.url_image}"
+                    blog.user.url_image = f"{scheme}://{host}/image/get_image_user/{blog.user.url_image}"
                 user_data = UserResponse.model_validate(blog.user).model_dump(mode='json')
                 blog_data = BlogResponse.model_validate(blog).model_dump(mode='json')
                 blog_data['user'] = user_data

@@ -32,7 +32,9 @@ setup_logging()
 app = FastAPI(title= 'API SIJAC',
             description='API SIJAC',
             version='0.0.1',
-            docs_url='/api',
+            docs_url='/swagger',
+            openapi_url='/openapi.json',
+            openapi="3.1.0"
             )
 
 app.state.rate_limit_ips = {}

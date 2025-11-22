@@ -6,6 +6,7 @@ from sqlmodel import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.database.db import db
 from src.models.user_model import User
+from src.schemas.user_schema.update_password import UpdatePassword
 from src.schemas.user_schema.user_create import UserCreate
 from src.schemas.user_schema.user_credentials import UserCredentials
 from src.services.auth_service import AuthService, oauth_scheme
@@ -33,7 +34,7 @@ async def create_user(
     first_name: str = Form(...),
     last_name: str = Form(...),
     specialty: str = Form(...),
-    image: UploadFile = File(...),
+    image: UploadFile | None = File(None),
     session: AsyncSession = Depends(db.get_session),
 ):
     try:
@@ -148,3 +149,24 @@ async def reset_tables(
         status_code=status.HTTP_200_OK,
         content={"detail": "Tablas reiniciadas"}
     )
+
+@user_router.put('/update_password')
+async def update_password(
+    password_data: UpdatePassword,
+    user: User = Depends(auth.get_current_user), 
+    session: AsyncSession = Depends(db.get_session),
+):
+    if password_data.new_password != password_data.repeat_new_password:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": "Las nuevas contraseñas no coinciden."}
+        )
+    return await UserService(session).update_password(user.id, password_data.new_password, password_data.old_password)
+
+@user_router.put('/update_image_user')
+async def update_image_user(
+    image: UploadFile,
+    user: User = Depends(auth.get_current_user), 
+    session: AsyncSession = Depends(db.get_session),
+):
+    return await UserService(session).update_image_user(user.id, image)

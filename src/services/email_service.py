@@ -100,14 +100,14 @@ class EmailService:
                     </head>
                     <body style="padding: 40px;">
                         <h2 style="text-align: center;">Hola {appointment.full_name}!!!</h2>
-                        <p style="text-align: start;">Lamentablemente tenemos que informarle que el su turno ha sido cancelado, por el siguiente motivo</p>
+                        <p style="text-align: start;">Lamentablemente tenemos que informarle que el su turno ha sido rechazado.</p>
+                        <p>Por el siguiente motivo:</p>
+                        <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{reason}"</p>
                         <p style="text-align: start;">Le solicitamos solicitar un nuevo turno desde nuestra web o acercarce por nuestras oficinas</p>
                         <p style="text-align: start;">Datos del turno:</p>
                         <p>dia: {appointment.date_get.strftime('%d-%m-%Y')}</p>
                         <p>Inicio: {appointment.start_time.strftime('%H-%M')}</p>
                         <p>Inicio: {appointment.end_time.strftime('%H-%M')}</p>
-                        <p>Por el siguiente motivo:</p>
-                        <p style="text-align: center; margin: 20px 40px 20px 40px; font-style: italic;">"{reason}"</p>
                         <h2 style="text-align: center;">Gracias por contacarte con SIJAC!!!</h2>
                     </body>
                     </html>

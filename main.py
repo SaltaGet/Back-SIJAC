@@ -2,9 +2,9 @@ import newrelic.agent
 import uvicorn
 import os
 
-# Inicializamos New Relic
-newrelic_config_file = os.getenv("NEW_RELIC_CONFIG_FILE", "newrelic.ini")
-newrelic.agent.initialize(newrelic_config_file)
+# # Inicializamos New Relic
+# newrelic_config_file = os.getenv("NEW_RELIC_CONFIG_FILE", "newrelic.ini")
+# newrelic.agent.initialize(newrelic_config_file)
 
 if __name__ == "__main__":
     uvicorn.run(

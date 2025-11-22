@@ -86,7 +86,7 @@ class UserService:
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Error al intentar logout")
 
     
-    async def create_user(self, user: UserCreate, image: UploadFile, role: RoleUser = RoleUser.USER):
+    async def create_user(self, user: UserCreate, image: UploadFile | None, role: RoleUser = RoleUser.USER):
             try:
                 logging.info("Creando usuario")
                 statement= select(User).where(User.email == user.email)
@@ -106,15 +106,19 @@ class UserService:
                             content={"detail": "El email ya existe."}
                             )
                  
-                new_image = await ImageTool(os.path.join('src', 'images', 'user')).save_image(image)
+                if image is not None:
+                    new_image = await ImageTool(os.path.join('src', 'images', 'user')).save_image(image)
 
-                if new_image is None:
-                    return JSONResponse(
-                        content={
-                            "detail": "Error al guardar la imagen"
-                            },
-                        status_code=status.HTTP_424_FAILED_DEPENDENCY
-                    )
+                    if new_image is None:
+                        return JSONResponse(
+                            content={
+                                "detail": "Error al guardar la imagen"
+                                },
+                            status_code=status.HTTP_424_FAILED_DEPENDENCY
+                        )
+                else:
+                    new_image = None
+                
             
                 new_user: User = User(**user.model_dump(), role=role, url_image= new_image)
 
@@ -181,11 +185,14 @@ class UserService:
 
             scheme = request.scope.get("scheme") 
             host = request.headers.get("host")   
-            full_url = f"{scheme}://{host}/api/image/get_image_user/"
+            full_url = f"{scheme}://{host}/image/get_image_user/"
 
             users_list = []
             for user in users:
-                user.url_image = full_url + user.url_image
+                if user.url_image is None:
+                    user.url_image = None
+                else:
+                    user.url_image = full_url + user.url_image
                 u = UserResponse.model_validate(user).model_dump(mode='json')
                 users_list.append(u)
 
@@ -234,6 +241,7 @@ class UserService:
             return {"token": new_token, "refresh_token": new_refresh_token}
 
         except Exception as e:
+            print(e)
             raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al actualizar el token.')
 
 
@@ -258,4 +266,64 @@ class UserService:
         user: User | None = exist.first()
         return user is None 
     
-    
+    async def update_password(self, user_id: int, new_password: str, old_password: str):
+        try:
+            user_exist: User | None = await self.session.get(User, user_id)
+                
+            if(user_exist == None):
+                return JSONResponse(
+                        status_code=status.HTTP_404_NOT_FOUND, 
+                        content={"detail": "Usuario no encontrado"}
+                        )
+            
+            if self.verify_password(old_password, user_exist.password_hash) == False:
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST, 
+                    content={"detail": "La contraseña actual es incorrecta."}
+                    )
+
+            hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            user_exist.password_hash = hashed_password
+
+            await self.session.commit()
+
+            return JSONResponse(
+                        status_code=status.HTTP_200_OK, 
+                        content={"detail": "Contraseña actualizada exitosamente."}
+                        )
+        except Exception as e:
+            print(e)
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al actualizar la contraseña.')
+
+    async def update_image_user(self, user_id: int, image: UploadFile):
+        try:
+            user_exist: User | None = await self.session.get(User, user_id)
+                
+            if(user_exist == None):
+                return JSONResponse(
+                        status_code=status.HTTP_404_NOT_FOUND, 
+                        content={"detail": "Usuario no encontrado"}
+                        )
+
+            image_tool = ImageTool(os.path.join('src', 'images', 'user'))
+            file_name = await image_tool.save_image(image)
+
+            if file_name is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error al intentar editar la imagen del usuario"
+                )
+            
+            await image_tool.delete_image(user_exist.url_image)
+
+            user_exist.url_image = file_name
+
+            await self.session.commit()
+
+            return JSONResponse(
+                        status_code=status.HTTP_200_OK, 
+                        content={"detail": "Imagen de usuario actualizada exitosamente."}
+                        )
+        except Exception as e:
+            print(e)
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error al actualizar la imagen del usuario.')

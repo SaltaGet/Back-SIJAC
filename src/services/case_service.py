@@ -312,7 +312,7 @@ class CaseService:
         
     async def update(self, case_id: str, client_udpate: CaseUpdate, user_id: str):
         try:
-            logging.info("Obteniendo clientes")
+            logging.info("Obteniendo caso")
             sttmt = (
                 select(Case)
                 .join(UserCase, UserCase.case_id == Case.id)
